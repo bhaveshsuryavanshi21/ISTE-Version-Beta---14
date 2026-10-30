@@ -1,0 +1,11 @@
+{
+  "dependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "lucide-react": "^1.65.0",
+    "react-router-dom": "^7.18.5",
+    "tailwindcss": "^4.3.3"
+  },
+  "scripts": {
+    "dev": "vite"
+  }
+}
