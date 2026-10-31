@@ -404,32 +404,51 @@ function EligibilityResults({ results, assessmentId, onBack }) {
                   "No detailed explanation was provided."}
               </p>
 
-              {result.conditions?.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="mb-2 text-sm font-semibold text-slate-800">
-                    Condition-wise explanation
-                  </h4>
+             
+{result.conditions?.length > 0 && (
+  <div className="mt-4">
+    <h4 className="mb-2 text-sm font-semibold text-slate-800">
+      Condition-wise explanation
+    </h4>
 
-                  <div className="space-y-2">
-                    {result.conditions.map((condition, conditionIndex) => (
-                      <div
-                        key={condition.id ?? conditionIndex}
-                        className="rounded-lg bg-slate-50 p-3"
-                      >
-                        <p className="text-sm font-medium text-slate-800">
-                          {condition.label || condition.description}
-                        </p>
+    <div className="space-y-2">
+      {result.conditions.map((condition, index) => (
+        <div
+          key={condition.id ?? index}
+          className="rounded-lg bg-slate-50 p-3"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-medium text-slate-800">
+              {condition.label || condition.description}
+            </p>
 
-                        {condition.explanation && (
-                          <p className="mt-1 text-xs leading-5 text-slate-500">
-                            {condition.explanation}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+            <span
+              className={`rounded-md px-2 py-1 text-xs font-semibold ${
+                condition.outcome === "passed"
+                  ? "bg-emerald-50 text-emerald-700"
+                  : condition.outcome === "not_met"
+                  ? "bg-rose-50 text-rose-700"
+                  : "bg-amber-50 text-amber-700"
+              }`}
+            >
+              {condition.outcome === "passed"
+                ? "Condition met"
+                : condition.outcome === "not_met"
+                ? "Not met"
+                : "Needs verification"}
+            </span>
+          </div>
+
+          {condition.explanation && (
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              {condition.explanation}
+            </p>
+          )}
+        </div>
+      ))}
+    </div>
+  </div>
+)}
 
               {result.missing_information?.length > 0 && (
                 <div className="mt-4 rounded-lg bg-amber-50 p-3">
