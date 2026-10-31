@@ -10,10 +10,11 @@ export default function MainLayout() {
   return (
     <div className="min-h-screen bg-slate-50">
       <Sidebar
-        isOpen={menuOpen}
-        closeSidebar={() => setMenuOpen(false)}
-        language={language}
-      />
+  isOpen={menuOpen}
+  closeSidebar={() => setMenuOpen(false)}
+  language={language}
+  onLanguageChange={setLanguage}
+/>
 
       {/* Mobile sidebar overlay */}
       {menuOpen && (
