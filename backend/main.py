@@ -2,6 +2,7 @@
 from collections import defaultdict
 from typing import Any
 import logging
+import re
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -792,5 +793,229 @@ def check_eligibility(request: EligibilityCheckRequest):
                 "Eligibility assessment is temporarily unavailable."
                 if language == "en"
                 else "पात्रता की जाँच अभी उपलब्ध नहीं है।"
+            ),
+        ) from error
+
+
+# API 5: Rule-based JanSahayak Assistant (no external AI/API required)
+class AssistantChatRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=1000)
+    language: str = "en"
+
+
+def normalize_assistant_text(value: str) -> str:
+    # Treat punctuation variants such as PM-KISAN and PM KISAN alike.
+    cleaned = re.sub(r"[^\\w\\s]", " ", (value or "").strip().lower())
+    return " ".join(cleaned.split())
+
+
+def assistant_scheme_aliases(scheme_id: int, language: str) -> list[str]:
+    aliases = {
+        1: [
+            "pm kisan", "pm-kisan", "pmkisan",
+            "किसान सम्मान निधि", "पीएम किसान", "पीएम-किसान",
+        ],
+        2: [
+            "ladli behna", "ladli behna yojana", "ladli behen",
+            "ladli behen yojna", "ladli behna yojna",
+            "लाड़ली बहना", "लाडली बहना", "लाड़ली बहना योजना",
+        ],
+        3: ["pm vishwakarma", "pm-vishwakarma", "vishwakarma", "विश्वकर्मा", "पीएम विश्वकर्मा"],
+        4: ["ayushman bharat", "pm jay", "pm-jay", "ayushman card", "आयुष्मान भारत", "आयुष्मान कार्ड"],
+        5: ["pm usp", "pm-uspcss", "central sector scholarship", "scholarship", "केंद्रीय क्षेत्र छात्रवृत्ति", "छात्रवृत्ति"],
+    }
+    return aliases.get(scheme_id, [])
+
+
+def assistant_detect_intent(message: str) -> str:
+    text_value = normalize_assistant_text(message)
+
+    if any(word in text_value for word in ["document", "documents", "required papers", "दस्तावेज", "कागजात", "कौन से पेपर"]):
+        return "documents"
+    if any(word in text_value for word in ["apply", "application", "how to get", "कैसे आवेदन", "आवेदन", "फॉर्म", "apply कैसे"]):
+        return "application"
+    if any(word in text_value for word in ["benefit", "benefits", "amount", "money", "सहायता राशि", "लाभ", "कितने रुपये", "कितनी राशि"]):
+        return "benefits"
+    if any(word in text_value for word in ["eligible", "eligibility", "criteria", "qualify", "पात्र", "पात्रता", "योग्यता", "शर्तें"]):
+        return "eligibility"
+    if any(word in text_value for word in ["official link", "website", "source", "आधिकारिक लिंक", "वेबसाइट", "स्रोत"]):
+        return "sources"
+    if any(word in text_value for word in ["hello", "hi", "hey", "नमस्ते", "नमस्कार", "हेलो"]):
+        return "greeting"
+    if any(word in text_value for word in ["all schemes", "list schemes", "which schemes", "सभी योजनाएँ", "सभी योजनाएं", "कौन-कौन सी योजनाएँ"]):
+        return "all_schemes"
+    return "overview"
+
+
+@app.post("/api/assistant/chat")
+def assistant_chat(request: AssistantChatRequest):
+    language = get_language(request.language)
+    message = normalize_assistant_text(request.message)
+
+    if not message:
+        raise HTTPException(
+            status_code=400,
+            detail="Please enter a question." if language == "en" else "कृपया अपना प्रश्न लिखें।",
+        )
+
+    try:
+        with engine.connect() as connection:
+            scheme_result = connection.execute(text("""
+                SELECT
+                    id,
+                    name_en,
+                    to_jsonb(s)->>'name_hi' AS name_hi,
+                    description_en,
+                    to_jsonb(s)->>'description_hi' AS description_hi,
+                    benefit_en,
+                    to_jsonb(s)->>'benefit_hi' AS benefit_hi,
+                    official_url,
+                    guidelines_url,
+                    last_verified_at
+                FROM public.schemes AS s
+                WHERE is_active = TRUE
+                ORDER BY name_en
+            """))
+            schemes = [dict(row) for row in scheme_result.mappings().all()]
+
+            if not schemes:
+                return {
+                    "reply": "Scheme information is not available right now." if language == "en" else "योजना की जानकारी अभी उपलब्ध नहीं है।",
+                    "scheme": None,
+                    "sources": [],
+                    "suggestions": [],
+                }
+
+            selected_scheme = None
+            for scheme in schemes:
+                searchable = [scheme.get("name_en", ""), scheme.get("name_hi", "")]
+                searchable.extend(assistant_scheme_aliases(scheme["id"], language))
+                if any(alias and normalize_assistant_text(alias) in message for alias in searchable):
+                    selected_scheme = scheme
+                    break
+
+            intent = assistant_detect_intent(message)
+
+            if intent == "greeting":
+                return {
+                    "reply": (
+                        "Hello! I can help you understand the five schemes listed on JanSahayak. Ask about a scheme's benefits, eligibility conditions, documents, or official links."
+                        if language == "en"
+                        else "नमस्ते! मैं जनसहायक पर उपलब्ध पाँच योजनाओं की जानकारी दे सकता हूँ। किसी योजना के लाभ, पात्रता, दस्तावेज़ या आधिकारिक लिंक के बारे में पूछें।"
+                    ),
+                    "scheme": None,
+                    "sources": [],
+                    "suggestions": [
+                        "What are the benefits of PM-KISAN?" if language == "en" else "पीएम-किसान के क्या लाभ हैं?",
+                        "Which documents are needed for Ladli Behna?" if language == "en" else "लाड़ली बहना के लिए कौन से दस्तावेज़ चाहिए?",
+                    ],
+                }
+
+            if intent == "all_schemes":
+                names = [scheme["name_en"] if language == "en" else (scheme.get("name_hi") or scheme["name_en"]) for scheme in schemes]
+                heading = "These are the schemes currently available on JanSahayak:" if language == "en" else "जनसहायक पर अभी ये योजनाएँ उपलब्ध हैं:"
+                return {
+                    "reply": heading + "\n• " + "\n• ".join(names),
+                    "scheme": None,
+                    "sources": [],
+                    "suggestions": [],
+                }
+
+            if selected_scheme is None:
+                return {
+                    "reply": (
+                        "I can answer using the scheme information stored in JanSahayak. Please mention one scheme by name, such as PM-KISAN, Ladli Behna Yojana, PM Vishwakarma, Ayushman Bharat PM-JAY, or PM-USP Scholarship. I cannot reliably answer questions outside this stored information."
+                        if language == "en"
+                        else "मैं जनसहायक में उपलब्ध योजना की जानकारी के आधार पर उत्तर दे सकता हूँ। कृपया योजना का नाम बताएँ, जैसे पीएम-किसान, लाड़ली बहना, पीएम विश्वकर्मा, आयुष्मान भारत PM-JAY या PM-USP छात्रवृत्ति। उपलब्ध जानकारी से बाहर के प्रश्नों का विश्वसनीय उत्तर मैं नहीं दे सकता।"
+                    ),
+                    "scheme": None,
+                    "sources": [],
+                    "suggestions": [
+                        "List all schemes" if language == "en" else "सभी योजनाएँ दिखाएँ",
+                    ],
+                }
+
+            scheme_id = selected_scheme["id"]
+            scheme_name = selected_scheme["name_en"] if language == "en" else (selected_scheme.get("name_hi") or selected_scheme["name_en"])
+            description = selected_scheme.get("description_en") if language == "en" else (selected_scheme.get("description_hi") or selected_scheme.get("description_en"))
+            benefits = selected_scheme.get("benefit_en") if language == "en" else (selected_scheme.get("benefit_hi") or selected_scheme.get("benefit_en"))
+
+            document_result = connection.execute(text("""
+                SELECT name_en, to_jsonb(d)->>'name_hi' AS name_hi,
+                       description_en, to_jsonb(d)->>'description_hi' AS description_hi,
+                       is_mandatory
+                FROM public.scheme_documents AS d
+                WHERE scheme_id = :scheme_id AND is_active = TRUE
+                ORDER BY display_order, id
+            """), {"scheme_id": scheme_id})
+            documents = [dict(row) for row in document_result.mappings().all()]
+
+            rule_result = connection.execute(text("""
+                SELECT explanation_en, explanation_hi
+                FROM public.scheme_rules
+                WHERE scheme_id = :scheme_id AND is_active = TRUE
+                  AND (explanation_en IS NOT NULL OR explanation_hi IS NOT NULL)
+                ORDER BY id
+            """), {"scheme_id": scheme_id})
+            rules = [dict(row) for row in rule_result.mappings().all()]
+
+            source_result = connection.execute(text("""
+                SELECT title, url, last_checked_at
+                FROM public.scheme_sources
+                WHERE scheme_id = :scheme_id AND is_active = TRUE
+                ORDER BY id
+            """), {"scheme_id": scheme_id})
+            sources = [dict(row) for row in source_result.mappings().all()]
+
+            if intent == "documents":
+                document_lines = []
+                for document in documents:
+                    name = document.get("name_en") if language == "en" else (document.get("name_hi") or document.get("name_en"))
+                    description_text = document.get("description_en") if language == "en" else (document.get("description_hi") or document.get("description_en"))
+                    mandatory = document.get("is_mandatory")
+                    marker = " (mandatory)" if language == "en" and mandatory else (" (अनिवार्य)" if language == "hi" and mandatory else "")
+                    document_lines.append(f"• {name}{marker}" + (f" — {description_text}" if description_text else ""))
+                intro = f"Documents listed for {scheme_name}:" if language == "en" else f"{scheme_name} के लिए सूचीबद्ध दस्तावेज़:"
+                reply = intro + ("\n" + "\n".join(document_lines) if document_lines else ("\nNo document list is configured yet." if language == "en" else "\nदस्तावेज़ों की सूची अभी उपलब्ध नहीं है।"))
+            elif intent == "eligibility":
+                explanations = []
+                for rule in rules:
+                    explanation = rule.get("explanation_en") if language == "en" else (rule.get("explanation_hi") or rule.get("explanation_en"))
+                    if explanation and explanation not in explanations:
+                        explanations.append(explanation)
+                intro = f"Configured screening conditions for {scheme_name}:" if language == "en" else f"{scheme_name} के लिए उपलब्ध प्रारंभिक पात्रता शर्तें:"
+                disclaimer = "This is guidance based on the configured rules, not official approval. Your answers must be checked through the eligibility flow and official authority." if language == "en" else "यह उपलब्ध नियमों पर आधारित मार्गदर्शन है, सरकारी स्वीकृति नहीं। अपने उत्तर पात्रता जाँच और आधिकारिक विभाग से सत्यापित करें।"
+                reply = intro + ("\n• " + "\n• ".join(explanations) if explanations else ("\nNo verified conditions are configured." if language == "en" else "\nसत्यापित शर्तें अभी उपलब्ध नहीं हैं।")) + "\n\n" + disclaimer
+            elif intent == "benefits":
+                reply = (f"Benefits of {scheme_name}:\n{benefits}" if language == "en" else f"{scheme_name} के लाभ:\n{benefits}") if benefits else ("Benefit information is not available in the stored records." if language == "en" else "संग्रहीत रिकॉर्ड में लाभ की जानकारी उपलब्ध नहीं है।")
+            elif intent == "application":
+                link = selected_scheme.get("guidelines_url") or selected_scheme.get("official_url")
+                reply = (f"For {scheme_name}, use the official scheme instructions to confirm the current application process. Steps can change, so please follow the official guidance: {link or 'No official application link is configured.'}" if language == "en" else f"{scheme_name} के आवेदन की वर्तमान प्रक्रिया जानने के लिए आधिकारिक निर्देश देखें। प्रक्रिया बदल सकती है, इसलिए आधिकारिक जानकारी का पालन करें: {link or 'आधिकारिक आवेदन लिंक उपलब्ध नहीं है।'}")
+            elif intent == "sources":
+                reply = (f"Official information for {scheme_name} is linked below. Check the source page for the latest rules." if language == "en" else f"{scheme_name} की आधिकारिक जानकारी के लिंक नीचे दिए गए हैं। नवीनतम नियमों के लिए स्रोत पृष्ठ देखें।")
+            else:
+                reply = (f"{scheme_name}\n{description or ''}\n\nBenefits: {benefits or 'Not available in the stored records.'}\n\nYou can also ask about eligibility, documents, or application information." if language == "en" else f"{scheme_name}\n{description or ''}\n\nलाभ: {benefits or 'संग्रहीत रिकॉर्ड में उपलब्ध नहीं।'}\n\nआप पात्रता, दस्तावेज़ या आवेदन की जानकारी भी पूछ सकते हैं।")
+
+            if selected_scheme.get("official_url") and not any(source.get("url") == selected_scheme.get("official_url") for source in sources):
+                sources.insert(0, {"title": "Official scheme website", "url": selected_scheme["official_url"], "last_checked_at": selected_scheme.get("last_verified_at")})
+
+            return {
+                "reply": reply,
+                "scheme": {"id": scheme_id, "name": scheme_name},
+                "sources": sources,
+                "suggestions": [
+                    ("What documents are required?" if language == "en" else "कौन से दस्तावेज़ चाहिए?"),
+                    ("Explain eligibility" if language == "en" else "पात्रता समझाएँ"),
+                ],
+            }
+
+    except SQLAlchemyError as error:
+        logger.exception("Database error in JanSahayak Assistant")
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Assistant information is temporarily unavailable. Please try again."
+                if language == "en"
+                else "सहायक की जानकारी अभी उपलब्ध नहीं है। कृपया फिर प्रयास करें।"
             ),
         ) from error

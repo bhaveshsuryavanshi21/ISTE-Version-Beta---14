@@ -1,4 +1,3 @@
-
 import { NavLink } from "react-router-dom";
 
 export default function Navbar({ language, onLanguageChange }) {
@@ -13,6 +12,10 @@ export default function Navbar({ language, onLanguageChange }) {
     {
       path: "/schemes",
       label: hindi ? "सभी योजनाएँ" : "All Schemes",
+    },
+    {
+      path: "/assistant",
+      label: hindi ? "सहायक" : "Assistant",
     },
     { path: "/help", label: hindi ? "सहायता" : "Help" },
   ];
