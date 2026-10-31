@@ -1,3 +1,4 @@
+
 import { NavLink } from "react-router-dom";
 import {
   Home,
@@ -43,12 +44,21 @@ export default function Sidebar({
 }) {
   const labels = translations[language] || translations.en;
 
+  // Sidebar active item styling
+  const sidebarLinkStyle = ({ isActive }) =>
+    `flex items-center gap-5 rounded-lg px-6 py-4 font-medium transition-all duration-200 ${
+      isActive
+        ? "border-l-[3px] border-orange-500 bg-orange-50 text-orange-700"
+        : "border-l-[3px] border-transparent text-slate-800 hover:bg-slate-50"
+    }`;
+
   return (
     <aside
       className={`fixed left-0 top-0 z-50 flex h-screen w-[305px] flex-col border-r border-slate-200 bg-white transition-transform duration-300 ${
         isOpen ? "translate-x-0" : "-translate-x-full"
       } lg:translate-x-0`}
     >
+      {/* Logo Section */}
       <div className="flex h-[145px] items-center justify-center border-b border-slate-200 px-4">
         <img
           src="/jansahayak-logo.png"
@@ -57,6 +67,7 @@ export default function Sidebar({
         />
       </div>
 
+      {/* Navigation Links */}
       <nav className="flex-1 px-3 py-5">
         <div className="space-y-2">
           {navigationLinks.map(({ key, path, icon: Icon }) => (
@@ -65,13 +76,7 @@ export default function Sidebar({
               to={path}
               end={path === "/"}
               onClick={closeSidebar}
-              className={({ isActive }) =>
-                `flex items-center gap-5 rounded-lg px-6 py-4 font-medium transition ${
-                  isActive
-                    ? "border-l-[3px] border-blue-600 bg-blue-50 text-blue-600"
-                    : "text-slate-800 hover:bg-slate-50"
-                }`
-              }
+              className={sidebarLinkStyle}
             >
               <Icon size={25} />
               {labels[key]}
@@ -79,17 +84,12 @@ export default function Sidebar({
           ))}
         </div>
 
+        {/* Help Section */}
         <div className="mt-7 border-t border-slate-200 pt-5">
           <NavLink
             to="/help"
             onClick={closeSidebar}
-            className={({ isActive }) =>
-              `flex items-center gap-5 rounded-lg px-6 py-4 font-medium transition ${
-                isActive
-                  ? "border-l-[3px] border-blue-600 bg-blue-50 text-blue-600"
-                  : "text-slate-800 hover:bg-slate-50"
-              }`
-            }
+            className={sidebarLinkStyle}
           >
             <CircleHelp size={25} />
             {labels.help}
@@ -97,11 +97,16 @@ export default function Sidebar({
         </div>
       </nav>
 
+      {/* Profile Section */}
       <div className="flex h-[105px] items-center gap-4 border-t border-slate-200 px-7">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-xl">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-xl">
           U
         </div>
-        <span className="flex-1 font-medium">{labels.profile}</span>
+
+        <span className="flex-1 font-medium">
+          {labels.profile}
+        </span>
+
         <ChevronRight size={22} className="text-slate-500" />
       </div>
     </aside>
