@@ -1,3 +1,4 @@
+
 import { Link, useOutletContext } from "react-router-dom";
 import {
   HelpCircle,
@@ -6,135 +7,162 @@ import {
   FileText,
   ExternalLink,
   ArrowLeft,
+  UserCheck,
+  Trash2,
 } from "lucide-react";
 
 const CONTENT = {
   en: {
     title: "Help & Privacy",
-    intro: "Learn how Jan Sahayak works and how your information is handled.",
+    intro: "Understand how JanSahayak works and how your information is handled.",
+    home: "Back to Home",
     sections: [
       {
         icon: HelpCircle,
-        title: "How Jan Sahayak works",
-        text: "Jan Sahayak helps citizens discover government schemes, answer relevant eligibility questions and understand preliminary eligibility results.",
+        title: "How JanSahayak works",
+        text: "JanSahayak helps citizens discover government schemes, answer relevant eligibility questions and understand preliminary eligibility results. It currently covers five central and Madhya Pradesh schemes.",
       },
       {
         icon: ShieldCheck,
         title: "Your information and privacy",
-        text: "Your answers are sent to our backend for eligibility assessment. The current prototype does not permanently save your answers. Assessment result summaries are stored in your browser using localStorage.",
+        text: "Your answers are sent to our backend for eligibility assessment. The current prototype does not permanently store your personal answers in the database. Assessment results are temporarily kept in your browser session.",
       },
       {
-        icon: FileText,
-        title: "Saved assessment history",
-        text: "The latest 20 assessments are retained in your browser. They are not automatically synced across devices or browsers. You can delete individual records or clear your history from My Results.",
+        icon: Trash2,
+        title: "Clearing your information",
+        text: "Use the Clear My Data option on the Results page to remove the assessment results managed by this application from the current browser session. Closing the browser session also clears session storage. This does not erase browser history or downloaded documents.",
       },
       {
         icon: Mic,
         title: "Voice assistance",
-        text: "Voice input uses browser speech recognition where supported. Browser speech recognition may process audio through an external service. Spoken results use your browser's speech synthesis capability. Manual typing remains available.",
+        text: "You can answer questions using your voice and listen to questions and results in Hindi or English. Voice recognition depends on browser support and an internet connection. Your browser's speech recognition service may process audio externally. Manual answers are always available.",
       },
       {
         icon: FileText,
         title: "Document checklist",
-        text: "The prototype displays scheme document requirements and lets you print or save the checklist as a PDF. It does not currently collect or upload your identity documents.",
+        text: "JanSahayak displays document requirements configured for each scheme. You can print or save the checklist as a PDF. The prototype does not collect or upload your identity documents.",
       },
       {
         icon: ExternalLink,
         title: "Official scheme information",
-        text: "Eligibility results are preliminary. Always follow the official government website and scheme guidelines before applying. The prototype's available rules may be incomplete or require verification.",
+        text: "Each assessment is preliminary. Scheme rules can change, and some conditions may require official verification. Always check the official scheme website and its latest guidelines before applying.",
+      },
+      {
+        icon: UserCheck,
+        title: "When you need human assistance",
+        text: "If your information is uncertain, conflicting or cannot be verified, do not rely on an automatic result. Contact the relevant government department, local scheme office, Common Service Centre (CSC), or Gram Panchayat for assistance.",
       },
     ],
     faqTitle: "Frequently Asked Questions",
     faqs: [
       {
-        q: "Does Jan Sahayak guarantee scheme approval?",
-        a: "No. It provides preliminary screening, not an official government decision.",
+        q: "Does JanSahayak guarantee scheme approval?",
+        a: "No. It provides preliminary eligibility screening. The relevant government authority makes the final decision.",
       },
       {
         q: "Are my answers permanently stored?",
-        a: "The current backend processes your answers but does not permanently save them. Result summaries are stored locally in your browser.",
+        a: "The current prototype processes your answers without permanently saving them in the database. Assessment results are temporarily stored in your browser session.",
       },
       {
-        q: "Can I use the application without voice input?",
-        a: "Yes. You can answer questions by typing or selecting options.",
+        q: "Can I use JanSahayak without voice input?",
+        a: "Yes. You can select options or type your answers manually.",
       },
       {
-        q: "How can I delete my saved results?",
-        a: "Open My Results and use the delete controls to remove individual records or clear your history.",
+        q: "What if I do not know an answer?",
+        a: "Do not guess. Use an available 'Not sure' option where provided. The result may require further verification.",
+      },
+      {
+        q: "What should I do if my result says Needs Verification?",
+        a: "Check the official source linked on the result and contact the relevant government department or CSC if you need help.",
+      },
+      {
+        q: "Can I use JanSahayak on a shared phone?",
+        a: "Yes. Use Clear My Data on the Results page before handing the phone to another person. Avoid saving or downloading documents containing personal information on a shared device.",
       },
     ],
-    home: "Back to Home",
   },
 
   hi: {
     title: "सहायता और गोपनीयता",
-    intro: "जानें कि जन सहायक कैसे काम करता है और आपकी जानकारी का उपयोग कैसे होता है।",
+    intro: "जानें कि जनसहायक कैसे काम करता है और आपकी जानकारी का उपयोग कैसे होता है।",
+    home: "मुख्य पृष्ठ पर जाएँ",
     sections: [
       {
         icon: HelpCircle,
-        title: "जन सहायक कैसे काम करता है",
-        text: "जन सहायक नागरिकों को सरकारी योजनाएँ खोजने, पात्रता से जुड़े प्रश्नों के उत्तर देने और प्रारंभिक पात्रता परिणाम समझने में मदद करता है।",
+        title: "जनसहायक कैसे काम करता है",
+        text: "जनसहायक नागरिकों को सरकारी योजनाएँ खोजने, पात्रता से जुड़े प्रश्नों के उत्तर देने और प्रारंभिक परिणाम समझने में मदद करता है। इसमें अभी केंद्र सरकार और मध्य प्रदेश की पाँच योजनाएँ शामिल हैं।",
       },
       {
         icon: ShieldCheck,
         title: "आपकी जानकारी और गोपनीयता",
-        text: "पात्रता जाँच के लिए आपके उत्तर हमारे बैकएंड को भेजे जाते हैं। वर्तमान प्रोटोटाइप आपके उत्तरों को स्थायी रूप से सहेजता नहीं है। परिणामों का सारांश आपके ब्राउज़र के localStorage में रखा जाता है।",
+        text: "पात्रता जाँच के लिए आपके उत्तर हमारे बैकएंड को भेजे जाते हैं। वर्तमान प्रोटोटाइप आपके व्यक्तिगत उत्तरों को डेटाबेस में स्थायी रूप से सेव नहीं करता। जाँच के परिणाम आपके ब्राउज़र सत्र में अस्थायी रूप से रखे जाते हैं।",
       },
       {
-        icon: FileText,
-        title: "सहेजे गए परिणाम",
-        text: "आपके ब्राउज़र में नवीनतम 20 जाँचों का इतिहास रखा जाता है। यह दूसरे डिवाइस या ब्राउज़र से अपने आप साझा नहीं होता। आप मेरे परिणाम पेज से रिकॉर्ड हटा सकते हैं।",
+        icon: Trash2,
+        title: "अपनी जानकारी मिटाना",
+        text: "परिणाम पेज पर मेरा डेटा मिटाएँ विकल्प का उपयोग करके इस ऐप द्वारा रखे गए जाँच परिणामों को वर्तमान ब्राउज़र सत्र से हटा सकते हैं। ब्राउज़र सत्र बंद करने पर session storage भी साफ़ हो जाता है। इससे ब्राउज़र हिस्ट्री या डाउनलोड किए गए दस्तावेज़ नहीं मिटते।",
       },
       {
         icon: Mic,
         title: "आवाज़ की सुविधा",
-        text: "आवाज़ से उत्तर देने के लिए समर्थित ब्राउज़र की स्पीच रिकग्निशन सुविधा इस्तेमाल होती है। ऑडियो किसी बाहरी सेवा द्वारा प्रोसेस किया जा सकता है। परिणाम सुनने के लिए ब्राउज़र की स्पीच सुविधा इस्तेमाल होती है। आप उत्तर टाइप भी कर सकते हैं।",
+        text: "आप हिंदी या अंग्रेज़ी में बोलकर उत्तर दे सकते हैं और प्रश्नों तथा परिणामों को सुन सकते हैं। यह सुविधा ब्राउज़र के समर्थन और इंटरनेट पर निर्भर करती है। ब्राउज़र की आवाज़ पहचान सेवा ऑडियो को बाहरी रूप से प्रोसेस कर सकती है। आप उत्तर स्वयं टाइप भी कर सकते हैं।",
       },
       {
         icon: FileText,
-        title: "दस्तावेज़ चेकलिस्ट",
-        text: "यह प्रोटोटाइप आवश्यक दस्तावेज़ों की सूची दिखाता है और उसे प्रिंट या PDF के रूप में सेव करने देता है। अभी पहचान पत्र या अन्य दस्तावेज़ अपलोड नहीं किए जाते।",
+        title: "दस्तावेज़ों की सूची",
+        text: "जनसहायक प्रत्येक योजना के लिए उपलब्ध दस्तावेज़ों की सूची दिखाता है। आप इसे प्रिंट या PDF के रूप में सेव कर सकते हैं। यह प्रोटोटाइप आपके पहचान पत्र या अन्य दस्तावेज़ अपलोड नहीं करता।",
       },
       {
         icon: ExternalLink,
-        title: "आधिकारिक योजना की जानकारी",
-        text: "पात्रता परिणाम प्रारंभिक हैं। आवेदन करने से पहले आधिकारिक सरकारी वेबसाइट और योजना के दिशा-निर्देश अवश्य देखें। प्रोटोटाइप में उपलब्ध नियम अधूरे हो सकते हैं या सत्यापन की आवश्यकता हो सकती है।",
+        title: "योजना की आधिकारिक जानकारी",
+        text: "हर पात्रता परिणाम प्रारंभिक होता है। सरकारी योजनाओं के नियम बदल सकते हैं और कुछ शर्तों की आधिकारिक पुष्टि आवश्यक हो सकती है। आवेदन करने से पहले योजना की आधिकारिक वेबसाइट और नवीनतम दिशा-निर्देश अवश्य देखें।",
+      },
+      {
+        icon: UserCheck,
+        title: "मानवीय सहायता कब लें",
+        text: "यदि आपकी जानकारी अनिश्चित, विरोधाभासी या सत्यापित नहीं हो पा रही है, तो केवल स्वचालित परिणाम पर निर्भर न रहें। संबंधित सरकारी विभाग, स्थानीय योजना कार्यालय, कॉमन सर्विस सेंटर (CSC) या ग्राम पंचायत से सहायता लें।",
       },
     ],
     faqTitle: "अक्सर पूछे जाने वाले प्रश्न",
     faqs: [
       {
-        q: "क्या जन सहायक सरकारी मंज़ूरी की गारंटी देता है?",
-        a: "नहीं। यह केवल प्रारंभिक पात्रता जाँच करता है। अंतिम निर्णय सरकार का होता है।",
+        q: "क्या जनसहायक सरकारी मंज़ूरी की गारंटी देता है?",
+        a: "नहीं। यह केवल प्रारंभिक पात्रता जाँच करता है। अंतिम निर्णय संबंधित सरकारी विभाग का होता है।",
       },
       {
-        q: "क्या मेरे उत्तर हमेशा के लिए सहेजे जाते हैं?",
-        a: "वर्तमान बैकएंड उत्तरों को प्रोसेस करता है, लेकिन उन्हें स्थायी रूप से सहेजता नहीं है। परिणामों का सारांश आपके ब्राउज़र में रखा जाता है।",
+        q: "क्या मेरे उत्तर स्थायी रूप से सेव होते हैं?",
+        a: "वर्तमान प्रोटोटाइप आपके उत्तरों को प्रोसेस करता है, लेकिन उन्हें डेटाबेस में स्थायी रूप से सेव नहीं करता। जाँच के परिणाम आपके ब्राउज़र सत्र में अस्थायी रूप से रखे जाते हैं।",
       },
       {
-        q: "क्या मैं आवाज़ के बिना इसका उपयोग कर सकता हूँ?",
-        a: "हाँ। आप उत्तर टाइप कर सकते हैं या दिए गए विकल्प चुन सकते हैं।",
+        q: "क्या मैं आवाज़ के बिना जनसहायक का उपयोग कर सकता हूँ?",
+        a: "हाँ। आप विकल्प चुन सकते हैं या अपने उत्तर स्वयं टाइप कर सकते हैं।",
       },
       {
-        q: "मैं अपने सहेजे गए परिणाम कैसे हटाऊँ?",
-        a: "मेरे परिणाम पेज पर जाएँ और किसी रिकॉर्ड को हटाने या पूरा इतिहास साफ़ करने के विकल्प का उपयोग करें।",
+        q: "अगर मुझे किसी प्रश्न का उत्तर नहीं पता तो क्या करूँ?",
+        a: "अनुमान न लगाएँ। जहाँ 'पता नहीं' का विकल्प उपलब्ध हो, उसका उपयोग करें। ऐसे मामलों में आगे सत्यापन आवश्यक हो सकता है।",
+      },
+      {
+        q: "अगर परिणाम में पुष्टि आवश्यक लिखा आए तो क्या करूँ?",
+        a: "परिणाम में दिए गए आधिकारिक स्रोत को देखें और आवश्यकता होने पर संबंधित सरकारी विभाग या CSC से संपर्क करें।",
+      },
+      {
+        q: "क्या मैं साझा मोबाइल पर जनसहायक का उपयोग कर सकता हूँ?",
+        a: "हाँ। मोबाइल किसी दूसरे व्यक्ति को देने से पहले परिणाम पेज पर मेरा डेटा मिटाएँ विकल्प का उपयोग करें। साझा डिवाइस पर व्यक्तिगत जानकारी वाले दस्तावेज़ डाउनलोड या सेव करने से बचें।",
       },
     ],
-    home: "मुख्य पृष्ठ पर जाएँ",
   },
 };
 
 export default function Help() {
-  const context = useOutletContext();
-  const language = context?.language || "en";
-  const t = CONTENT[language] || CONTENT.en;
+  const context = useOutletContext() || {};
+  const language = context.language === "hi" ? "hi" : "en";
+  const t = CONTENT[language];
 
   return (
     <div className="mx-auto max-w-[1100px]">
-
       <Link
         to="/"
-        className="mb-6 inline-flex items-center gap-2 text-sm text-slate-500 hover:text-blue-600"
+        className="mb-6 inline-flex items-center gap-2 text-sm text-slate-500 hover:text-emerald-700"
       >
         <ArrowLeft size={17} />
         {t.home}
@@ -159,7 +187,7 @@ export default function Help() {
               className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
             >
               <div className="mb-4 flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
                   <Icon size={23} />
                 </div>
 
@@ -198,7 +226,6 @@ export default function Help() {
           ))}
         </div>
       </section>
-
     </div>
   );
 }

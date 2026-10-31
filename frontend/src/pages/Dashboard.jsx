@@ -1,333 +1,154 @@
 
-import { useMemo } from "react";
 import { Link, useOutletContext } from "react-router-dom";
-import {
-  Home,
-  ChevronRight,
-  Search,
-  Landmark,
-  ArrowRight,
-  FileText,
-  ClipboardList,
-  Folder,
-} from "lucide-react";
-
-// Read saved eligibility history
-function readAssessmentHistory() {
-  try {
-    const stored = JSON.parse(
-      window.localStorage.getItem("janSahayakResults") || "[]"
-    );
-
-    return Array.isArray(stored) ? stored : [];
-  } catch {
-    return [];
-  }
-}
-
-// Get eligibility status
-function getStatusText(status, isHindi) {
-  const normalized = String(status || "").toLowerCase();
-
-  if (["eligible", "potentially_eligible"].includes(normalized)) {
-    return isHindi ? "संभावित रूप से पात्र" : "Potentially eligible";
-  }
-
-  if (normalized === "not_eligible") {
-    return isHindi ? "पात्र नहीं" : "Not eligible";
-  }
-
-  return isHindi ? "सत्यापन आवश्यक" : "Needs verification";
-}
-
-// Format date
-function formatDate(value, isHindi) {
-  if (!value) {
-    return isHindi ? "तारीख उपलब्ध नहीं" : "Date unavailable";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return String(value);
-  }
-
-  return new Intl.DateTimeFormat(isHindi ? "hi-IN" : "en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(date);
-}
+import { ArrowRight, ShieldCheck, Languages, Landmark } from "lucide-react";
 
 export default function Dashboard() {
-  const outletContext = useOutletContext() || {};
-  const language = outletContext.language || "en";
+  const { language = "en" } = useOutletContext() || {};
   const isHindi = language === "hi";
 
-  // Recent activity
-  const activities = useMemo(() => {
-    return readAssessmentHistory()
-      .flatMap((record) => {
-        const results = Array.isArray(record?.results)
-          ? record.results
-          : [];
-
-        return results.map((result, index) => ({
-          id: `${record.id || record.savedAt || "assessment"}-${result.scheme_id ?? index}`,
-          title:
-            result.scheme_name ||
-            (isHindi ? "सरकारी योजना" : "Government Scheme"),
-          description: isHindi
-            ? "पात्रता जाँच पूरी हुई"
-            : "Eligibility assessment completed",
-          date: formatDate(record.savedAt, isHindi),
-          savedAt: record.savedAt,
-          status: result.status,
-        }));
-      })
-      .sort(
-        (a, b) =>
-          new Date(b.savedAt || 0) - new Date(a.savedAt || 0)
-      )
-      .slice(0, 3);
-  }, [isHindi]);
-
-  // Status badge colors
-  const getStatusStyle = (status) => {
-    const normalized = String(status || "").toLowerCase();
-
-    if (["eligible", "potentially_eligible"].includes(normalized)) {
-      return "bg-green-100 text-green-800";
-    }
-
-    if (normalized === "not_eligible") {
-      return "bg-rose-100 text-rose-700";
-    }
-
-    return "bg-amber-100 text-amber-700";
-  };
-
   return (
-    <div className="mx-auto max-w-[1500px]">
+    <div className="mx-auto max-w-[1400px]">
 
-      {/* Breadcrumb */}
-      <div className="mb-6 flex items-center gap-2 text-sm text-slate-500">
-        <Home size={18} />
-        <span>{isHindi ? "होम" : "Home"}</span>
-        <ChevronRight size={17} />
-        <span className="font-medium text-slate-900">
-          {isHindi ? "डैशबोर्ड" : "Dashboard"}
-        </span>
-      </div>
+      {/* Main Hero */}
+      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-900 via-emerald-800 to-teal-950 px-7 py-12 text-white shadow-sm sm:px-12 sm:py-16 lg:px-14 lg:py-20">
 
-      {/* Welcome Section */}
-      <div className="mb-7">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-950">
-          {isHindi ? "स्वागत है!" : "Welcome!"}
-        </h1>
+        <div className="relative z-10 max-w-3xl">
 
-        <p className="mt-2 text-lg text-slate-600">
-          {isHindi
-            ? "सरकारी योजनाएँ खोजें और अपनी पात्रता जाँचें।"
-            : "Discover government schemes and check your eligibility."}
-        </p>
-      </div>
-
-      {/* Action Cards */}
-      <div className="mb-7 grid grid-cols-1 gap-5 xl:grid-cols-2">
-
-        {/* Eligibility Card */}
-        <div className="group rounded-xl border border-emerald-100 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-emerald-300 hover:shadow-lg">
-
-          <div className="mb-5 flex items-center gap-5">
-
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 transition-colors group-hover:bg-emerald-100">
-              <Search
-                size={42}
-                strokeWidth={1.8}
-                className="text-emerald-800"
-              />
-            </div>
-
-            <div>
-              <h2 className="text-xl font-bold text-slate-950">
-                {isHindi
-                  ? "मेरे लिए योजनाएँ खोजें"
-                  : "Check schemes for me"}
-              </h2>
-
-              <p className="mt-2 text-base leading-6 text-slate-600">
-                {isHindi
-                  ? "कुछ सवालों के जवाब दें और जानें कि आप किन योजनाओं के लिए पात्र हो सकते हैं।"
-                  : "Answer a few questions to find schemes you may qualify for."}
-              </p>
-            </div>
-
+          <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-700/60 px-4 py-2 text-sm font-medium text-emerald-100">
+            <ShieldCheck size={17} />
+            {isHindi
+              ? "मध्य प्रदेश और केंद्र सरकार की योजनाएँ"
+              : "Madhya Pradesh & Central Government Schemes"}
           </div>
 
-          <Link
-            to="/eligibility"
-            className="flex w-full items-center justify-center gap-3 rounded-lg bg-emerald-800 py-4 text-base font-semibold text-white shadow-sm transition-all duration-200 hover:bg-emerald-900"
-          >
-            {isHindi ? "शुरू करें" : "Get Started"}
-            <ArrowRight size={20} />
-          </Link>
+          <h1 className="max-w-3xl text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+            {isHindi
+              ? "अपने लिए सही सरकारी योजनाएँ खोजें"
+              : "Find Government Schemes You Are Eligible For"}
+          </h1>
 
-        </div>
+          <p className="mt-6 max-w-2xl text-base leading-7 text-emerald-100 sm:text-lg">
+            {isHindi
+              ? "सरल भाषा में योजनाओं की जानकारी पाएँ, अपनी पात्रता जाँचें और आवश्यक दस्तावेज़ जानें।"
+              : "Understand government schemes, check your eligibility, and discover the documents you need — all in simple language."}
+          </p>
 
-        {/* Explore Schemes Card */}
-        <div className="group rounded-xl border border-emerald-100 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-emerald-300 hover:shadow-lg">
-
-          <div className="mb-5 flex items-center gap-5">
-
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 transition-colors group-hover:bg-emerald-100">
-              <Landmark
-                size={42}
-                strokeWidth={1.8}
-                className="text-emerald-800"
-              />
-            </div>
-
-            <div>
-              <h2 className="text-xl font-bold text-slate-950">
-                {isHindi ? "सभी योजनाएँ देखें" : "Explore all schemes"}
-              </h2>
-
-              <p className="mt-2 text-base leading-6 text-slate-600">
-                {isHindi
-                  ? "केंद्र और राज्य सरकार की योजनाएँ देखें।"
-                  : "Browse Central and Madhya Pradesh government schemes."}
-              </p>
-            </div>
-
-          </div>
-
-          <Link
-            to="/schemes"
-            className="flex w-full items-center justify-center gap-3 rounded-lg border border-emerald-800 bg-white py-4 text-base font-semibold text-emerald-800 transition-all duration-200 hover:bg-emerald-50"
-          >
-            {isHindi ? "योजनाएँ ब्राउज़ करें" : "Browse Schemes"}
-            <ArrowRight size={20} />
-          </Link>
-
-        </div>
-      </div>
-
-      {/* Recent Activity Section */}
-      <section className="overflow-hidden rounded-xl border border-emerald-100 bg-white shadow-sm">
-
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-emerald-100 px-6 py-5">
-
-          <h2 className="text-xl font-bold text-slate-950">
-            {isHindi ? "हाल की गतिविधि" : "Recent Activity"}
-          </h2>
-
-          <Link
-            to="/results"
-            className="font-semibold text-emerald-800 transition-colors hover:text-emerald-950"
-          >
-            {isHindi ? "सभी देखें" : "View all"}
-          </Link>
-
-        </div>
-
-        {/* Activity List */}
-        {activities.length > 0 ? (
-
-          <div className="px-5">
-
-            {activities.map((activity) => (
-
-              <Link
-                to="/results"
-                key={activity.id}
-                className="group flex flex-wrap items-center gap-4 border-b border-slate-100 py-4 last:border-0 transition-colors hover:bg-emerald-50/40"
-              >
-
-                {/* Icon */}
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-emerald-50">
-                  <FileText
-                    size={27}
-                    className="text-emerald-800"
-                  />
-                </div>
-
-                {/* Details */}
-                <div className="min-w-[180px] flex-1">
-                  <h3 className="font-semibold text-slate-950">
-                    {activity.title}
-                  </h3>
-
-                  <p className="mt-1 text-sm text-slate-500">
-                    {activity.description}
-                  </p>
-                </div>
-
-                {/* Date */}
-                <span className="min-w-[120px] text-sm text-slate-500">
-                  {activity.date}
-                </span>
-
-                {/* Status */}
-                <div className="min-w-[150px]">
-                  <span
-                    className={`inline-block rounded-xl px-4 py-2 text-sm font-medium ${getStatusStyle(
-                      activity.status
-                    )}`}
-                  >
-                    {getStatusText(activity.status, isHindi)}
-                  </span>
-                </div>
-
-                {/* Arrow */}
-                <ChevronRight
-                  size={23}
-                  className="text-slate-500 transition-transform group-hover:translate-x-1 group-hover:text-emerald-800"
-                />
-
-              </Link>
-
-            ))}
-
-          </div>
-
-        ) : (
-
-          /* Empty State */
-          <div className="px-5 py-14 text-center">
-
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50">
-              <ClipboardList
-                size={34}
-                className="text-emerald-700"
-              />
-            </div>
-
-            <h3 className="font-semibold text-slate-900">
-              {isHindi
-                ? "अभी कोई गतिविधि नहीं है"
-                : "No recent activity yet"}
-            </h3>
-
-            <p className="mt-2 text-sm text-slate-500">
-              {isHindi
-                ? "आपकी पात्रता जाँच यहाँ दिखाई देगी।"
-                : "Your eligibility assessments will appear here."}
-            </p>
+          <div className="mt-9 flex flex-wrap gap-4">
 
             <Link
               to="/eligibility"
-              className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-emerald-800 hover:text-emerald-950 hover:underline"
+              className="inline-flex items-center justify-center gap-3 rounded-lg bg-yellow-400 px-6 py-4 font-bold text-emerald-950 shadow-sm transition hover:bg-yellow-300"
             >
-              {isHindi ? "पात्रता जाँचें" : "Check eligibility"}
-              <ArrowRight size={17} />
+              {isHindi ? "मेरी पात्रता जाँचें" : "Check My Eligibility"}
+              <ArrowRight size={20} />
+            </Link>
+
+            <Link
+              to="/schemes"
+              className="inline-flex items-center justify-center gap-3 rounded-lg border border-emerald-300/60 bg-white/10 px-6 py-4 font-semibold text-white transition hover:bg-white/20"
+            >
+              {isHindi ? "सभी योजनाएँ देखें" : "Explore Schemes"}
+              <ArrowRight size={20} />
             </Link>
 
           </div>
 
-        )}
+          {/* Highlights */}
+          <div className="mt-14 grid max-w-2xl grid-cols-1 gap-8 border-t border-emerald-400/30 pt-8 sm:grid-cols-3">
 
+            <div>
+              <Landmark size={23} className="mb-3 text-yellow-400" />
+              <h3 className="font-bold text-white">
+                {isHindi ? "केंद्र + मध्य प्रदेश" : "Central + MP"}
+              </h3>
+              <p className="mt-1 text-sm text-emerald-200">
+                {isHindi ? "सरकारी योजनाएँ" : "Government schemes"}
+              </p>
+            </div>
+
+            <div>
+              <Languages size={23} className="mb-3 text-yellow-400" />
+              <h3 className="font-bold text-white">
+                {isHindi ? "हिंदी और अंग्रेज़ी" : "Hindi & English"}
+              </h3>
+              <p className="mt-1 text-sm text-emerald-200">
+                {isHindi ? "अपनी भाषा चुनें" : "Choose your language"}
+              </p>
+            </div>
+
+            <div>
+              <ShieldCheck size={23} className="mb-3 text-yellow-400" />
+              <h3 className="font-bold text-white">
+                {isHindi ? "निःशुल्क सहायता" : "Free Assistance"}
+              </h3>
+              <p className="mt-1 text-sm text-emerald-200">
+                {isHindi ? "पात्रता की जानकारी" : "Eligibility guidance"}
+              </p>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="py-14">
+
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-slate-900">
+            {isHindi ? "जनसहायक कैसे काम करता है?" : "How JanSahayak Works"}
+          </h2>
+
+          <p className="mt-2 text-slate-600">
+            {isHindi
+              ? "तीन आसान चरणों में अपने लिए योजनाएँ खोजें।"
+              : "Find relevant schemes in three simple steps."}
+          </p>
+        </div>
+
+        <div className="grid gap-5 md:grid-cols-3">
+
+          {[
+            {
+              number: "01",
+              title: isHindi ? "जानकारी दें" : "Share Your Details",
+              description: isHindi
+                ? "कुछ आसान सवालों के जवाब दें।"
+                : "Answer a few simple questions about yourself.",
+            },
+            {
+              number: "02",
+              title: isHindi ? "पात्रता जाँचें" : "Check Eligibility",
+              description: isHindi
+                ? "योजनाओं के नियमों के आधार पर अपनी पात्रता जानें।"
+                : "Your answers are checked against scheme rules.",
+            },
+            {
+              number: "03",
+              title: isHindi ? "परिणाम जानें" : "View Your Results",
+              description: isHindi
+                ? "पात्रता और आवश्यक दस्तावेज़ों की जानकारी पाएँ।"
+                : "See eligibility explanations and required documents.",
+            },
+          ].map((step) => (
+            <div
+              key={step.number}
+              className="rounded-xl border border-slate-200 bg-white p-6"
+            >
+              <span className="text-sm font-bold tracking-wider text-emerald-800">
+                {step.number}
+              </span>
+
+              <h3 className="mt-4 text-lg font-bold text-slate-900">
+                {step.title}
+              </h3>
+
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                {step.description}
+              </p>
+            </div>
+          ))}
+
+        </div>
       </section>
 
     </div>

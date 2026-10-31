@@ -1,350 +1,562 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+
+import { useEffect, useState } from "react";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import {
-  Home, ChevronRight, CalendarDays, UserRound, MapPin, Map,
-  BriefcaseBusiness, IndianRupee, Users, GraduationCap,
-  Accessibility, ArrowRight, ArrowLeft
+  Home,
+  ChevronRight,
+  ArrowRight,
+  LoaderCircle,
+  AlertCircle,
+  Volume2,
+  Mic,
+  MicOff,
 } from "lucide-react";
 
-const initialForm = {
-  age: "",
-  gender: "",
-  state: "Madhya Pradesh",
-  district: "",
-  occupation: "",
-  income: "",
-  category: "",
-  education: "",
-  disability: false
+const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+
+const TEXT = {
+  en: {
+    breadcrumb: "Home",
+    title: "Check Your Eligibility",
+    subtitle: "Answer a few questions to discover government schemes you may qualify for.",
+    step: "Eligibility Questions",
+    instructions: "Please answer the following questions as accurately as possible.",
+    loading: "Loading questions...",
+    noQuestions: "No active questions are currently available.",
+    choose: "Enter your answer",
+    notSure: "Not sure",
+    previous: "Previous",
+    submit: "Check My Eligibility",
+    submitting: "Checking...",
+    error: "Unable to load questions. Please check that the backend is running.",
+    submitError: "Unable to check eligibility. Please try again.",
+    voice: "Read question",
+    mic: "Answer using voice",
+    voiceUnsupported: "Voice input is not supported in this browser. Please use Google Chrome.",
+    speechError: "Could not recognize your voice. Please try again.",
+    noMatch: "Your spoken answer did not match an available option. Please try again or select manually.",
+    missing: "Please answer all required questions.",
+    privacy: "Your answers are used for this assessment and are not saved to a permanent profile.",
+    questions: "questions",
+  },
+  hi: {
+    breadcrumb: "होम",
+    title: "अपनी पात्रता जाँचें",
+    subtitle: "सरकारी योजनाओं की पात्रता जानने के लिए कुछ सवालों के जवाब दें।",
+    step: "पात्रता संबंधी प्रश्न",
+    instructions: "कृपया सभी प्रश्नों के सही उत्तर दें।",
+    loading: "प्रश्न लोड हो रहे हैं...",
+    noQuestions: "अभी कोई सक्रिय प्रश्न उपलब्ध नहीं हैं।",
+    choose: "अपना उत्तर लिखें",
+    notSure: "पता नहीं",
+    previous: "पिछला",
+    submit: "मेरी पात्रता जाँचें",
+    submitting: "जाँच हो रही है...",
+    error: "प्रश्न लोड नहीं हो सके। कृपया बैकएंड चालू होने की जाँच करें।",
+    submitError: "पात्रता की जाँच नहीं हो सकी। कृपया फिर प्रयास करें।",
+    voice: "प्रश्न सुनें",
+    mic: "बोलकर उत्तर दें",
+    voiceUnsupported: "इस ब्राउज़र में आवाज़ से उत्तर देने की सुविधा उपलब्ध नहीं है। कृपया Google Chrome का उपयोग करें।",
+    speechError: "आपकी आवाज़ समझ नहीं आई। कृपया दोबारा प्रयास करें।",
+    noMatch: "आपका बोला हुआ उत्तर उपलब्ध विकल्पों से मेल नहीं खाता। दोबारा बोलें या स्वयं विकल्प चुनें।",
+    missing: "कृपया सभी अनिवार्य प्रश्नों के उत्तर दें।",
+    privacy: "आपके उत्तर केवल इस जाँच के लिए उपयोग किए जाते हैं और स्थायी प्रोफ़ाइल में सेव नहीं होते।",
+    questions: "प्रश्न",
+  },
 };
 
-const districts = [
-  "Bhopal", "Indore", "Jabalpur", "Gwalior", "Seoni",
-  "Rewa", "Ujjain", "Sagar", "Satna", "Chhindwara",
-  "Dewas", "Raisen", "Vidisha", "Betul", "Other"
-];
+function getOptionValue(option) {
+  if (typeof option === "string" || typeof option === "number") {
+    return String(option);
+  }
 
-const occupationQuestions = {
-  farmer: [
-    { id: "land_ownership", title: "Do you own agricultural land?", options: ["Yes", "No", "Leased land"] },
-    { id: "land_size", title: "What is your agricultural land size?", options: ["Below 1 hectare", "1–2 hectares", "Above 2 hectares", "No land"] },
-    { id: "farming_type", title: "What type of farming do you practice?", options: ["Crop farming", "Dairy farming", "Both", "Other"] },
-    { id: "kisan_card", title: "Do you have a Kisan Credit Card?", options: ["Yes", "No", "Not sure"] }
-  ],
-  student: [
-    { id: "course", title: "What are you currently studying?", options: ["School", "Diploma", "Undergraduate", "Postgraduate", "Other"] },
-    { id: "institution", title: "Which type of institution do you attend?", options: ["Government", "Private", "Government-aided"] },
-    { id: "scholarship", title: "Are you currently receiving a scholarship?", options: ["Yes", "No"] },
-    { id: "hostel", title: "Do you live in a hostel?", options: ["Yes", "No"] }
-  ],
-  employed: [
-    { id: "job_type", title: "What type of employment do you have?", options: ["Government", "Private", "Contractual"] },
-    { id: "salary", title: "What is your monthly salary?", options: ["Below ₹10,000", "₹10,000–₹25,000", "₹25,000–₹50,000", "Above ₹50,000"] },
-    { id: "pf", title: "Do you receive EPF benefits?", options: ["Yes", "No", "Not sure"] }
-  ],
-  self_employed: [
-    { id: "work_type", title: "What type of work do you do?", options: ["Freelancing", "Services", "Artisan", "Other"] },
-    { id: "registration", title: "Is your work or business registered?", options: ["Yes", "No", "In process"] },
-    { id: "annual_income", title: "What is your approximate annual income?", options: ["Below ₹1 lakh", "₹1–2.5 lakh", "₹2.5–5 lakh", "Above ₹5 lakh"] }
-  ],
-  business: [
-    { id: "business_type", title: "What type of business do you operate?", options: ["Retail", "Manufacturing", "Services", "Other"] },
-    { id: "registration", title: "Is your business registered?", options: ["Yes", "No", "In process"] },
-    { id: "udyam", title: "Do you have Udyam Registration?", options: ["Yes", "No", "Not sure"] },
-    { id: "annual_income", title: "What is your approximate annual business income?", options: ["Below ₹1 lakh", "₹1–2.5 lakh", "₹2.5–5 lakh", "Above ₹5 lakh"] }
-  ],
-  unemployed: [
-    { id: "job_seeking", title: "Are you currently looking for a job?", options: ["Yes", "No"] },
-    { id: "skill_training", title: "Have you completed any skill training?", options: ["Yes", "No", "Currently enrolled"] },
-    { id: "employment_exchange", title: "Are you registered with an employment exchange?", options: ["Yes", "No"] }
-  ],
-  homemaker: [
-    { id: "shg", title: "Are you a member of a Self Help Group (SHG)?", options: ["Yes", "No"] },
-    { id: "income_activity", title: "Are you involved in an income-generating activity?", options: ["Yes", "No", "Planning to start"] },
-    { id: "ration_card", title: "Does your family have a ration card?", options: ["Yes", "No"] }
-  ],
-  other: [
-    { id: "work_type", title: "Which option best describes your current work?", options: ["Daily wage worker", "Artisan", "Retired", "Other"] },
-    { id: "ration_card", title: "Does your family have a ration card?", options: ["Yes", "No"] }
-  ]
-};
+  if (option && typeof option === "object") {
+    return String(
+      option.value ?? option.id ?? option.label_en ?? option.label ?? ""
+    );
+  }
 
-const inputClass =
-  "w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100";
-
-function Field({ label, icon: Icon, children }) {
-  return (
-    <div>
-      <label className="mb-2 block text-sm font-semibold text-slate-800">
-        {label} <span className="text-red-500">*</span>
-      </label>
-      <div className="relative">
-        {Icon && <Icon size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />}
-        {children}
-      </div>
-    </div>
-  );
+  return "";
 }
 
-function Stepper({ step }) {
-  const labels = ["Personal Details", "Additional Questions", "Results"];
-  return (
-    <div className="mx-auto mb-8 flex max-w-4xl items-center px-2">
-      {labels.map((label, index) => {
-        const number = index + 1;
-        const active = number === step;
-        const completed = number < step;
-        return (
-          <div key={label} className="flex flex-1 items-center last:flex-none">
-            <div className="flex min-w-[85px] flex-col items-center gap-2">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold ${
-                active || completed ? "bg-emerald-800 text-white" : "border border-slate-300 bg-white text-slate-500"
-              }`}>
-                {completed ? "✓" : number}
-              </div>
-              <span className={`text-center text-xs sm:text-sm ${active ? "font-semibold text-emerald-800" : "text-slate-500"}`}>
-                {label}
-              </span>
-            </div>
-            {number !== 3 && <div className={`mb-6 h-[2px] flex-1 ${completed ? "bg-emerald-700" : "bg-slate-200"}`} />}
-          </div>
-        );
-      })}
-    </div>
-  );
+function getOptionLabel(option, language) {
+  if (typeof option === "string" || typeof option === "number") {
+    return String(option);
+  }
+
+  if (option && typeof option === "object") {
+    return (
+      option[`label_${language}`] ??
+      option[`name_${language}`] ??
+      option.label ??
+      option.value ??
+      option.id ??
+      ""
+    );
+  }
+
+  return "";
+}
+
+function normalizeText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[.,!?।]/g, "")
+    .trim();
 }
 
 export default function Eligibility() {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
-  const [form, setForm] = useState(initialForm);
-  const [additionalAnswers, setAdditionalAnswers] = useState({});
+  const outletContext = useOutletContext() || {};
 
-  const updateField = (name, value) => {
-    setForm(prev => ({ ...prev, [name]: value }));
-  };
+  const language = outletContext.language === "hi" ? "hi" : "en";
+  const t = TEXT[language];
 
-  const goTo = nextStep => {
-    setStep(nextStep);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+  const [questions, setQuestions] = useState([]);
+  const [answers, setAnswers] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [voiceError, setVoiceError] = useState("");
+  const [listeningQuestion, setListeningQuestion] = useState(null);
 
-  const handlePersonalDetails = event => {
-    event.preventDefault();
+  useEffect(() => {
+    let cancelled = false;
 
-    if (
-      !form.age || Number(form.age) < 1 || Number(form.age) > 120 ||
-      !form.gender || !form.state || !form.district ||
-      !form.occupation || !form.income || !form.category || !form.education
-    ) {
-      alert("Please fill in all required fields.");
+    async function loadQuestions() {
+      setLoading(true);
+      setError("");
+
+      try {
+        const response = await fetch(
+          `${API_URL}/api/eligibility/questions?language=${language}`
+        );
+
+        if (!response.ok) {
+          throw new Error("Question request failed");
+        }
+
+        const data = await response.json();
+
+        if (!cancelled) {
+          setQuestions(data.questions || []);
+        }
+      } catch {
+        if (!cancelled) {
+          setError(t.error);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadQuestions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [language]);
+
+  function updateAnswer(questionId, value) {
+    setAnswers((previous) => ({
+      ...previous,
+      [questionId]: value,
+    }));
+  }
+
+  function readQuestion(question) {
+    if (!("speechSynthesis" in window)) {
+      setVoiceError(t.voiceUnsupported);
       return;
     }
 
-    setAdditionalAnswers({});
-    goTo(2);
-  };
+    window.speechSynthesis.cancel();
 
-  const handleAdditionalQuestions = event => {
-    event.preventDefault();
+    const utterance = new SpeechSynthesisUtterance(
+      [question.label, question.help_text].filter(Boolean).join(". ")
+    );
 
-    const questions = occupationQuestions[form.occupation] || [];
-    const hasUnanswered = questions.some(question => !additionalAnswers[question.id]);
+    utterance.lang = language === "hi" ? "hi-IN" : "en-IN";
+    utterance.rate = 0.9;
 
-    if (hasUnanswered) {
-      alert("Please answer all the questions.");
+    window.speechSynthesis.speak(utterance);
+  }
+
+  function startVoiceAnswer(question) {
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      setVoiceError(t.voiceUnsupported);
       return;
     }
 
-    const eligibilityData = {
-      personalDetails: form,
-      additionalAnswers
+    setVoiceError("");
+
+    const recognition = new SpeechRecognition();
+
+    recognition.lang = language === "hi" ? "hi-IN" : "en-IN";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 3;
+
+    setListeningQuestion(question.id);
+
+    recognition.onresult = (event) => {
+      const alternatives = Array.from(event.results[0]).map(
+        (result) => result.transcript
+      );
+
+      const options = Array.isArray(question.options)
+        ? question.options
+        : [];
+
+      if (options.length > 0) {
+        let matchedOption = null;
+
+        for (const transcript of alternatives) {
+          const spoken = normalizeText(transcript);
+
+          matchedOption = options.find((option) => {
+            const value = normalizeText(getOptionValue(option));
+            const label = normalizeText(getOptionLabel(option, language));
+
+            return (
+              spoken === value ||
+              spoken === label ||
+              (label.length > 2 && spoken.includes(label)) ||
+              (spoken.length > 2 && label.includes(spoken))
+            );
+          });
+
+          if (matchedOption) break;
+        }
+
+        if (matchedOption) {
+          updateAnswer(
+            question.id,
+            getOptionValue(matchedOption)
+          );
+        } else {
+          setVoiceError(t.noMatch);
+        }
+      } else {
+        const transcript = alternatives[0] || "";
+
+        if (question.type === "number") {
+          const number = transcript.match(/[\d.]+/);
+
+          if (number) {
+            updateAnswer(question.id, number[0]);
+          } else {
+            setVoiceError(t.noMatch);
+          }
+        } else {
+          updateAnswer(question.id, transcript);
+        }
+      }
     };
 
-    sessionStorage.setItem("janSahayakEligibility", JSON.stringify(eligibilityData));
+    recognition.onerror = () => {
+      setVoiceError(t.speechError);
+      setListeningQuestion(null);
+    };
 
-    // Results.jsx reads the same data from route state or sessionStorage.
-    navigate("/results", { state: { eligibilityData } });
-  };
+    recognition.onend = () => {
+      setListeningQuestion(null);
+    };
 
-  const questions = occupationQuestions[form.occupation] || [];
+    try {
+      recognition.start();
+    } catch {
+      setListeningQuestion(null);
+      setVoiceError(t.speechError);
+    }
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+
+    const unanswered = questions.filter(
+      (question) =>
+        question.required &&
+        (answers[question.id] === undefined ||
+          answers[question.id] === null ||
+          answers[question.id] === "")
+    );
+
+    if (unanswered.length > 0) {
+      setError(t.missing);
+      return;
+    }
+
+    setSubmitting(true);
+    setError("");
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/eligibility/check`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            scheme_id: null,
+            answers,
+            language,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Eligibility request failed");
+      }
+
+      const result = await response.json();
+
+      sessionStorage.setItem(
+        "janSahayakEligibilityResult",
+        JSON.stringify(result)
+      );
+
+      navigate("/results", {
+        state: {
+          eligibilityResult: result,
+          language,
+        },
+      });
+    } catch {
+      setError(t.submitError);
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
-    <div className="mx-auto max-w-[1500px]">
-      <div className="mb-5 flex items-center gap-2 text-sm text-slate-500">
-        <Home size={17} /> Home <ChevronRight size={17} /> Check Eligibility
-        <ChevronRight size={17} /> <span className="font-medium text-slate-900">Step {step}</span>
+    <div className="mx-auto max-w-4xl">
+      <div className="mb-6 flex items-center gap-2 text-sm text-slate-500">
+        <Home size={16} />
+        <span>{t.breadcrumb}</span>
+        <ChevronRight size={16} />
+        <span className="font-medium text-slate-900">
+          {t.title}
+        </span>
       </div>
 
       <div className="mb-7">
-        <h1 className="text-3xl font-bold text-slate-950">Check Your Eligibility</h1>
-        <p className="mt-2 text-base text-slate-500">
-          {step === 1
-            ? "Fill in your details to discover government schemes you may qualify for."
-            : "Answer a few questions based on your occupation."}
+        <h1 className="text-3xl font-bold text-slate-950">
+          {t.title}
+        </h1>
+        <p className="mt-2 text-slate-600">{t.subtitle}</p>
+      </div>
+
+      <div className="mb-6 rounded-xl border border-emerald-100 bg-emerald-50 p-4">
+        <h2 className="font-semibold text-emerald-900">
+          {t.step}
+        </h2>
+        <p className="mt-1 text-sm text-emerald-800">
+          {t.instructions}
         </p>
       </div>
 
-      <Stepper step={step} />
-
-      {step === 1 && (
-        <form onSubmit={handlePersonalDetails} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-          <h2 className="mb-1 text-xl font-bold text-slate-900">Personal Details</h2>
-          <p className="mb-7 text-sm text-slate-500">Please fill in your basic information.</p>
-
-          <div className="grid grid-cols-1 gap-x-7 gap-y-6 md:grid-cols-2">
-            <Field label="Age" icon={CalendarDays}>
-              <input type="number" min="1" max="120" required value={form.age}
-                onChange={e => updateField("age", e.target.value)}
-                placeholder="Enter your age" className={`${inputClass} pl-10`} />
-            </Field>
-
-            <Field label="Gender" icon={UserRound}>
-              <select required value={form.gender} onChange={e => updateField("gender", e.target.value)}
-                className={`${inputClass} pl-10`}>
-                <option value="">Select gender</option>
-                <option value="female">Female</option>
-                <option value="male">Male</option>
-                <option value="other">Other</option>
-              </select>
-            </Field>
-
-            <Field label="State" icon={MapPin}>
-              <select required value={form.state} onChange={e => updateField("state", e.target.value)}
-                className={`${inputClass} pl-10`}>
-                {["Madhya Pradesh", "Uttar Pradesh", "Maharashtra", "Rajasthan", "Gujarat", "Bihar", "Delhi", "Other"]
-                  .map(value => <option key={value} value={value}>{value}</option>)}
-              </select>
-            </Field>
-
-            <Field label="District" icon={Map}>
-              <select required value={form.district} onChange={e => updateField("district", e.target.value)}
-                className={`${inputClass} pl-10`}>
-                <option value="">Select district</option>
-                {districts.map(value => <option key={value}>{value}</option>)}
-              </select>
-            </Field>
-
-            <Field label="Occupation" icon={BriefcaseBusiness}>
-              <select required value={form.occupation}
-                onChange={e => {
-                  updateField("occupation", e.target.value);
-                  setAdditionalAnswers({});
-                }}
-                className={`${inputClass} pl-10`}>
-                <option value="">Select occupation</option>
-                <option value="farmer">Farmer</option>
-                <option value="student">Student</option>
-                <option value="employed">Salaried / Employed</option>
-                <option value="self_employed">Self-employed</option>
-                <option value="business">Business Owner</option>
-                <option value="unemployed">Unemployed</option>
-                <option value="homemaker">Homemaker</option>
-                <option value="other">Other</option>
-              </select>
-            </Field>
-
-            <Field label="Annual Family Income" icon={IndianRupee}>
-              <select required value={form.income} onChange={e => updateField("income", e.target.value)}
-                className={`${inputClass} pl-10`}>
-                <option value="">Select income range</option>
-                <option value="below_1_lakh">Below ₹1 lakh</option>
-                <option value="1_to_2_5_lakh">₹1 lakh – ₹2.5 lakh</option>
-                <option value="2_5_to_5_lakh">₹2.5 lakh – ₹5 lakh</option>
-                <option value="5_to_8_lakh">₹5 lakh – ₹8 lakh</option>
-                <option value="above_8_lakh">Above ₹8 lakh</option>
-              </select>
-            </Field>
-
-            <Field label="Social Category" icon={Users}>
-              <select required value={form.category} onChange={e => updateField("category", e.target.value)}
-                className={`${inputClass} pl-10`}>
-                <option value="">Select category</option>
-                <option value="general">General</option>
-                <option value="obc">OBC</option>
-                <option value="sc">SC</option>
-                <option value="st">ST</option>
-                <option value="other">Other</option>
-                <option value="prefer_not_to_say">Prefer not to say</option>
-              </select>
-            </Field>
-
-            <Field label="Education Level" icon={GraduationCap}>
-              <select required value={form.education} onChange={e => updateField("education", e.target.value)}
-                className={`${inputClass} pl-10`}>
-                <option value="">Select education level</option>
-                <option value="illiterate">No formal education</option>
-                <option value="primary">Primary</option>
-                <option value="secondary">Secondary</option>
-                <option value="higher_secondary">Higher Secondary</option>
-                <option value="graduate">Graduate</option>
-                <option value="postgraduate">Postgraduate</option>
-                <option value="other">Other</option>
-              </select>
-            </Field>
-          </div>
-
-          <label className="mt-7 flex cursor-pointer items-center gap-3 text-sm text-slate-600">
-            <input type="checkbox" checked={form.disability}
-              onChange={e => updateField("disability", e.target.checked)}
-              className="h-4 w-4 accent-emerald-800" />
-            <Accessibility size={19} /> Do you have a disability? (Optional)
-          </label>
-
-          <div className="mt-8 flex justify-end border-t border-slate-100 pt-6">
-            <button type="submit" className="flex items-center gap-2 rounded-lg bg-emerald-800 px-7 py-3 font-semibold text-white hover:bg-emerald-900">
-              Next Step <ArrowRight size={18} />
-            </button>
-          </div>
-        </form>
+      {loading && (
+        <div className="flex items-center justify-center gap-3 rounded-xl border bg-white p-12 text-slate-600">
+          <LoaderCircle className="animate-spin" size={22} />
+          {t.loading}
+        </div>
       )}
 
-      {step === 2 && (
-        <form onSubmit={handleAdditionalQuestions} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-          <h2 className="mb-1 text-xl font-bold text-slate-900">Additional Questions</h2>
-          <p className="mb-7 text-sm text-slate-500">These questions are based on your selected occupation.</p>
+      {!loading && error && questions.length === 0 && (
+        <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-5 text-red-700">
+          <AlertCircle size={21} />
+          {error}
+        </div>
+      )}
 
-          <div className="mb-7 rounded-lg bg-emerald-50 p-4">
-            <p className="text-sm text-emerald-900">Selected occupation</p>
-            <p className="mt-1 font-semibold capitalize text-emerald-800">
-              {form.occupation.replaceAll("_", " ")}
-            </p>
+      {!loading && !error && questions.length === 0 && (
+        <div className="rounded-xl border bg-white p-8 text-center text-slate-600">
+          {t.noQuestions}
+        </div>
+      )}
+
+      {!loading && questions.length > 0 && (
+        <form
+          onSubmit={handleSubmit}
+          className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8"
+        >
+          <div className="mb-7 flex items-center justify-between gap-3">
+            <h2 className="text-lg font-bold text-slate-900">
+              {t.instructions}
+            </h2>
+            <span className="whitespace-nowrap text-sm text-slate-500">
+              {questions.length} {t.questions}
+            </span>
           </div>
 
-          <div className="space-y-7">
-            {questions.map((question, index) => (
-              <div key={question.id}>
-                <h3 className="mb-3 font-semibold text-slate-800">
-                  {index + 1}. {question.title} <span className="text-red-500">*</span>
-                </h3>
-                <div className="flex flex-wrap gap-3">
-                  {question.options.map(option => (
-                    <label key={option}
-                      className={`cursor-pointer rounded-lg border px-5 py-3 text-sm transition ${
-                        additionalAnswers[question.id] === option
-                          ? "border-emerald-700 bg-emerald-50 font-semibold text-emerald-800"
-                          : "border-slate-200 text-slate-700 hover:border-emerald-600"
-                      }`}>
-                      <input type="radio" name={question.id} value={option}
-                        checked={additionalAnswers[question.id] === option}
-                        onChange={() => setAdditionalAnswers(prev => ({ ...prev, [question.id]: option }))}
-                        className="sr-only" />
-                      {option}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            ))}
+          <div className="space-y-8">
+            {questions.map((question, index) => {
+              const options = Array.isArray(question.options)
+                ? question.options
+                : [];
+
+              const isListening =
+                listeningQuestion === question.id;
+
+              return (
+                <section
+                  key={question.id}
+                  className="border-b border-slate-100 pb-7 last:border-0"
+                >
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-semibold leading-6 text-slate-900">
+                        {index + 1}. {question.label}
+                        {question.required && (
+                          <span className="ml-1 text-red-500">*</span>
+                        )}
+                      </h3>
+
+                      {question.help_text && (
+                        <p className="mt-1 text-sm text-slate-500">
+                          {question.help_text}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex shrink-0 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => readQuestion(question)}
+                        title={t.voice}
+                        className="rounded-lg border border-slate-200 p-2 text-emerald-800 hover:bg-emerald-50"
+                      >
+                        <Volume2 size={19} />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => startVoiceAnswer(question)}
+                        disabled={isListening}
+                        title={t.mic}
+                        className={`rounded-lg border p-2 ${
+                          isListening
+                            ? "border-red-300 bg-red-50 text-red-700"
+                            : "border-slate-200 text-emerald-800 hover:bg-emerald-50"
+                        }`}
+                      >
+                        {isListening ? (
+                          <MicOff size={19} />
+                        ) : (
+                          <Mic size={19} />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {options.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {options.map((option, optionIndex) => {
+                        const value = getOptionValue(option);
+                        const label = getOptionLabel(option, language);
+
+                        const selected =
+                          String(answers[question.id] ?? "") === value;
+
+                        return (
+                          <label
+                            key={`${question.id}-${optionIndex}`}
+                            className={`flex cursor-pointer items-center gap-3 rounded-lg border p-4 text-sm transition ${
+                              selected
+                                ? "border-emerald-700 bg-emerald-50 text-emerald-900"
+                                : "border-slate-200 text-slate-700 hover:border-emerald-500"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name={`question-${question.id}`}
+                              value={value}
+                              checked={selected}
+                              onChange={() =>
+                                updateAnswer(question.id, value)
+                              }
+                              className="h-4 w-4 accent-emerald-800"
+                            />
+                            {label}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <input
+                      type={question.type === "number" ? "number" : "text"}
+                      value={answers[question.id] ?? ""}
+                      onChange={(event) =>
+                        updateAnswer(question.id, event.target.value)
+                      }
+                      placeholder={t.choose}
+                      required={question.required}
+                      className="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
+                    />
+                  )}
+
+                  {!question.required && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateAnswer(question.id, "not_sure")
+                      }
+                      className={`mt-3 rounded-lg border px-4 py-2 text-sm ${
+                        answers[question.id] === "not_sure"
+                          ? "border-amber-500 bg-amber-50 text-amber-800"
+                          : "border-slate-200 text-slate-600"
+                      }`}
+                    >
+                      {t.notSure}
+                    </button>
+                  )}
+                </section>
+              );
+            })}
           </div>
 
-          <div className="mt-8 flex flex-col-reverse justify-between gap-3 border-t border-slate-100 pt-6 sm:flex-row">
-            <button type="button" onClick={() => goTo(1)}
-              className="flex items-center justify-center gap-2 rounded-lg border border-slate-300 px-6 py-3 font-semibold text-slate-700 hover:bg-slate-50">
-              <ArrowLeft size={18} /> Previous
+          {voiceError && (
+            <div className="mt-5 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+              {voiceError}
+            </div>
+          )}
+
+          {error && (
+            <div className="mt-5 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+
+          <p className="mt-6 text-xs leading-5 text-slate-500">
+            {t.privacy}
+          </p>
+
+          <div className="mt-7 flex flex-col-reverse justify-end gap-3 border-t border-slate-100 pt-6 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              className="rounded-lg border border-slate-300 px-6 py-3 font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              {t.previous}
             </button>
-            <button type="submit"
-              className="flex items-center justify-center gap-2 rounded-lg bg-emerald-800 px-7 py-3 font-semibold text-white hover:bg-emerald-900">
-              View My Results <ArrowRight size={18} />
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex items-center justify-center gap-2 rounded-lg bg-emerald-800 px-7 py-3 font-semibold text-white hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {submitting ? t.submitting : t.submit}
+              {!submitting && <ArrowRight size={18} />}
+              {submitting && (
+                <LoaderCircle size={18} className="animate-spin" />
+              )}
             </button>
           </div>
         </form>

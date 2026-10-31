@@ -1,329 +1,640 @@
-import { useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+
+import { useEffect, useState } from "react";
+import { Link, useLocation, useOutletContext, useNavigate } from "react-router-dom";
 import {
-  Home, ChevronRight, Search, Bookmark, CheckCircle2, CircleAlert,
-  CircleX, Leaf, Users, GraduationCap, House, HeartPulse, ArrowLeft,
-  CalendarDays, ClipboardList, Printer, Download, ExternalLink
+  CheckCircle2,
+  AlertCircle,
+  XCircle,
+  ExternalLink,
+  FileText,
+  Printer,
+  ArrowLeft,
+  LoaderCircle,
+  ShieldCheck,
+  Volume2,
+  Square,
+  Trash2,
 } from "lucide-react";
 
-const demoSchemes = [
-  {
-    id: 1,
-    name: "PM-KISAN",
-    ministry: "Ministry of Agriculture & Farmers Welfare",
-    description: "Income support to eligible farmer families under the scheme guidelines.",
-    status: "eligible",
-    icon: Leaf,
-    tone: "bg-green-50 text-green-700",
-    checked: "Not verified – update from official source",
-    benefits: ["Financial support as per current scheme guidelines.", "Benefit is transferred to eligible beneficiaries through DBT."],
-    criteria: ["Applicant must meet the current PM-KISAN beneficiary conditions.", "Land and exclusion criteria are subject to official verification."],
-    documents: ["Aadhaar Card", "Bank account details", "Land records"],
-    process: ["Visit the official PM-KISAN portal.", "Complete farmer registration or beneficiary verification.", "Follow the portal instructions and submit required details."],
-    website: "https://pmkisan.gov.in/"
+const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+
+const TEXT = {
+  en: {
+    title: "Your Eligibility Results",
+    subtitle: "Here is the preliminary assessment based on your answers.",
+    loading: "Preparing your results...",
+    error: "Unable to load your results.",
+    noResults: "No assessment results are available. Please check your eligibility first.",
+    eligible: "Potentially Eligible",
+    verification: "Needs Verification",
+    notEligible: "Conditions Not Met",
+    eligibleDesc: "Your answers match the configured screening conditions.",
+    verificationDesc: "Some details need confirmation before eligibility can be assessed.",
+    notEligibleDesc: "At least one configured condition appears not to be satisfied.",
+    conditions: "Eligibility Conditions",
+    missing: "Information to Verify",
+    documents: "Document Checklist",
+    sources: "Official Sources",
+    lastChecked: "Last checked",
+    notAvailable: "Date not available",
+    mandatory: "Mandatory",
+    optional: "Optional",
+    print: "Print Checklist",
+    back: "Check Again",
+    disclaimer: "This is a preliminary screening result, not official government approval or rejection. Final eligibility is decided by the relevant government authority.",
+    noDocuments: "No document checklist is available for this scheme.",
+    noSources: "No official source has been configured for this scheme.",
+    passed: "Condition matched",
+    notMet: "Condition not matched",
+    pending: "Needs verification",
+    listen: "Listen to result",
+    stop: "Stop speaking",
+    clear: "Clear My Data",
+    clearConfirm: "Are you sure? This will clear your assessment data from this browser session.",
+    cleared: "Your assessment data has been cleared.",
   },
-  {
-    id: 2,
-    name: "Ladli Behna Yojana",
-    ministry: "Government of Madhya Pradesh",
-    description: "Financial assistance for women who meet the current Madhya Pradesh scheme conditions.",
-    status: "eligible",
-    icon: Users,
-    tone: "bg-pink-50 text-pink-700",
-    checked: "Not verified – update from official source",
-    benefits: ["Financial assistance as per current scheme provisions.", "Payment is made through the prescribed benefit-transfer process."],
-    criteria: ["Applicant must satisfy the current age and residence conditions.", "Income and other exclusions must be checked against official rules."],
-    documents: ["Aadhaar Card", "Samagra ID", "Bank account details"],
-    process: ["Check the official Madhya Pradesh scheme portal.", "Check whether registration is currently open.", "Apply through the notified process with required documents."],
-    website: ""
+  hi: {
+    title: "आपकी पात्रता के परिणाम",
+    subtitle: "आपके उत्तरों के आधार पर प्रारंभिक जाँच का परिणाम।",
+    loading: "परिणाम तैयार हो रहे हैं...",
+    error: "परिणाम लोड नहीं हो सके।",
+    noResults: "जाँच का कोई परिणाम उपलब्ध नहीं है। कृपया पहले पात्रता जाँचें।",
+    eligible: "संभावित रूप से पात्र",
+    verification: "पुष्टि आवश्यक",
+    notEligible: "शर्तें पूरी नहीं हुईं",
+    eligibleDesc: "आपके उत्तर उपलब्ध पात्रता शर्तों से मेल खाते हैं।",
+    verificationDesc: "पात्रता का आकलन करने से पहले कुछ जानकारी की पुष्टि आवश्यक है।",
+    notEligibleDesc: "उपलब्ध जानकारी के अनुसार कम से कम एक शर्त पूरी नहीं होती।",
+    conditions: "पात्रता की शर्तें",
+    missing: "पुष्टि के लिए जानकारी",
+    documents: "दस्तावेज़ों की सूची",
+    sources: "आधिकारिक स्रोत",
+    lastChecked: "अंतिम जाँच",
+    notAvailable: "तारीख उपलब्ध नहीं",
+    mandatory: "अनिवार्य",
+    optional: "वैकल्पिक",
+    print: "दस्तावेज़ सूची प्रिंट करें",
+    back: "दोबारा जाँचें",
+    disclaimer: "यह केवल प्रारंभिक जाँच है, सरकारी स्वीकृति या अस्वीकृति नहीं। अंतिम पात्रता का निर्णय संबंधित सरकारी विभाग करेगा।",
+    noDocuments: "इस योजना के लिए दस्तावेज़ों की सूची उपलब्ध नहीं है।",
+    noSources: "इस योजना के लिए कोई आधिकारिक स्रोत उपलब्ध नहीं है।",
+    passed: "शर्त पूरी हुई",
+    notMet: "शर्त पूरी नहीं हुई",
+    pending: "पुष्टि आवश्यक",
+    listen: "परिणाम सुनें",
+    stop: "आवाज़ रोकें",
+    clear: "मेरा डेटा मिटाएँ",
+    clearConfirm: "क्या आप निश्चित हैं? इससे इस ब्राउज़र सत्र का जाँच डेटा मिट जाएगा।",
+    cleared: "आपका जाँच डेटा मिटा दिया गया है।",
   },
-  {
-    id: 3,
-    name: "PM Vidya Lakshmi",
-    ministry: "Ministry of Education",
-    description: "Information and application access for education loan options.",
-    status: "potential",
-    icon: GraduationCap,
-    tone: "bg-blue-50 text-blue-700",
-    checked: "Not verified – update from official source",
-    benefits: ["Access information about education loan options.", "Apply to participating lenders subject to their conditions."],
-    criteria: ["Admission, course, institution and lender conditions may apply.", "Final approval is determined by the lender."],
-    documents: ["Aadhaar Card", "Admission letter", "Academic records", "Income details"],
-    process: ["Visit the official portal.", "Register and complete the student profile.", "Review lender options and submit an application."],
-    website: ""
-  },
-  {
-    id: 4,
-    name: "PM Awas Yojana (Gramin)",
-    ministry: "Ministry of Rural Development",
-    description: "Housing assistance for rural households selected under applicable scheme guidelines.",
-    status: "not_eligible",
-    icon: House,
-    tone: "bg-orange-50 text-orange-700",
-    checked: "Not verified – update from official source",
-    benefits: ["Housing assistance as per applicable government guidelines."],
-    criteria: ["Rural residence and beneficiary selection rules apply.", "Final status depends on official beneficiary records."],
-    documents: ["Aadhaar Card", "Bank account details", "Residence details"],
-    process: ["Check the official PMAY-G portal.", "Verify beneficiary details with the relevant local authority.", "Follow the official instructions for further action."],
-    website: ""
-  },
-  {
-    id: 5,
-    name: "Ayushman Bharat",
-    ministry: "Ministry of Health & Family Welfare",
-    description: "Health coverage for people who meet the applicable beneficiary conditions.",
-    status: "eligible",
-    icon: HeartPulse,
-    tone: "bg-red-50 text-red-700",
-    checked: "Not verified – update from official source",
-    benefits: ["Cashless treatment at empanelled hospitals for eligible beneficiaries, subject to scheme rules."],
-    criteria: ["Eligibility is based on applicable beneficiary criteria and official records."],
-    documents: ["Aadhaar Card or accepted identity proof", "Family identification details"],
-    process: ["Check eligibility through the official portal or authorised channel.", "Complete beneficiary verification.", "Follow instructions to obtain or use the beneficiary card."],
-    website: ""
+};
+
+function getStatusText(status, t) {
+  if (status === "potentially_eligible") return t.eligible;
+  if (status === "not_eligible") return t.notEligible;
+  return t.verification;
+}
+
+function getStatusDescription(status, t) {
+  if (status === "potentially_eligible") return t.eligibleDesc;
+  if (status === "not_eligible") return t.notEligibleDesc;
+  return t.verificationDesc;
+}
+
+function StatusIcon({ status }) {
+  if (status === "potentially_eligible") {
+    return <CheckCircle2 className="text-emerald-700" size={24} />;
   }
-];
 
-const filters = [
-  { id: "all", label: "All Results" },
-  { id: "eligible", label: "Eligible" },
-  { id: "potential", label: "May Be Eligible" },
-  { id: "not_eligible", label: "Not Eligible" }
-];
+  if (status === "not_eligible") {
+    return <XCircle className="text-red-600" size={24} />;
+  }
 
-function StatusBadge({ status }) {
-  const config = {
-    eligible: { label: "Eligible", Icon: CheckCircle2, style: "bg-green-100 text-green-800" },
-    potential: { label: "May Be Eligible", Icon: CircleAlert, style: "bg-amber-100 text-amber-800" },
-    not_eligible: { label: "Not Eligible", Icon: CircleX, style: "bg-red-100 text-red-700" }
-  };
-  const { label, Icon, style } = config[status] || config.potential;
+  return <AlertCircle className="text-amber-600" size={24} />;
+}
+
+function ConditionStatus({ outcome, t }) {
+  const label =
+    outcome === "passed"
+      ? t.passed
+      : outcome === "not_met"
+        ? t.notMet
+        : t.pending;
+
+  const color =
+    outcome === "passed"
+      ? "bg-emerald-50 text-emerald-800"
+      : outcome === "not_met"
+        ? "bg-red-50 text-red-700"
+        : "bg-amber-50 text-amber-800";
+
   return (
-    <span className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold ${style}`}>
-      <Icon size={17} /> {label}
+    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${color}`}>
+      {label}
     </span>
   );
+}
+
+function speakResults(scheme, language) {
+  if (!("speechSynthesis" in window)) {
+    window.alert(
+      language === "hi"
+        ? "इस ब्राउज़र में आवाज़ की सुविधा उपलब्ध नहीं है।"
+        : "Voice output is not supported in this browser."
+    );
+    return;
+  }
+
+  window.speechSynthesis.cancel();
+
+  const statusText =
+    language === "hi"
+      ? scheme.status === "potentially_eligible"
+        ? "संभावित रूप से पात्र"
+        : scheme.status === "not_eligible"
+          ? "शर्तें पूरी नहीं हुईं"
+          : "पुष्टि आवश्यक"
+      : scheme.status === "potentially_eligible"
+        ? "Potentially eligible"
+        : scheme.status === "not_eligible"
+          ? "Conditions not met"
+          : "Needs verification";
+
+  const textToSpeak = [
+    scheme.scheme_name,
+    statusText,
+    scheme.explanation,
+    ...(scheme.missing_information || []),
+  ]
+    .filter(Boolean)
+    .join(". ");
+
+  const utterance = new SpeechSynthesisUtterance(textToSpeak);
+  utterance.lang = language === "hi" ? "hi-IN" : "en-IN";
+  utterance.rate = 0.9;
+
+  window.speechSynthesis.speak(utterance);
+}
+
+function printChecklist(scheme, t) {
+  const documents = scheme.documents || [];
+
+  const escapeHtml = (value) =>
+    String(value || "").replace(/[&<>"']/g, (character) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    })[character]);
+
+  const documentRows = documents.length
+    ? documents.map((document) => `
+        <li>
+          <label>
+            <input type="checkbox" />
+            ${escapeHtml(document.name)}
+            (${document.is_mandatory ? t.mandatory : t.optional})
+            ${document.description ? `<br/><small>${escapeHtml(document.description)}</small>` : ""}
+          </label>
+        </li>
+      `).join("")
+    : `<li>${t.noDocuments}</li>`;
+
+  const content = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8" />
+      <title>${escapeHtml(scheme.scheme_name)} - Checklist</title>
+      <style>
+        body { font-family: Arial, sans-serif; padding: 32px; color: #1f2937; }
+        h1 { color: #065f46; }
+        li { margin: 16px 0; line-height: 1.5; }
+        small { color: #64748b; }
+      </style>
+    </head>
+    <body>
+      <h1>${escapeHtml(scheme.scheme_name)}</h1>
+      <h2>${t.documents}</h2>
+      <ul>${documentRows}</ul>
+      <p>${t.disclaimer}</p>
+    </body>
+    </html>
+  `;
+
+  const printWindow = window.open("", "_blank");
+
+  if (!printWindow) {
+    window.alert(
+      "Please allow pop-ups to print the checklist. / चेकलिस्ट प्रिंट करने के लिए पॉप-अप की अनुमति दें।"
+    );
+    return;
+  }
+
+  printWindow.document.write(content);
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
 }
 
 export default function Results() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [filter, setFilter] = useState("all");
-  const [search, setSearch] = useState("");
-  const [saved, setSaved] = useState([]);
-  const [showSaved, setShowSaved] = useState(false);
-  const [selectedScheme, setSelectedScheme] = useState(null);
-  const [checkedDocs, setCheckedDocs] = useState({});
+  const outletContext = useOutletContext() || {};
 
-  const eligibilityData = useMemo(() => {
-    if (location.state?.eligibilityData) return location.state.eligibilityData;
-    try {
-      return JSON.parse(sessionStorage.getItem("janSahayakEligibility") || "null");
-    } catch {
-      return null;
+  const language =
+    location.state?.language ||
+    outletContext.language ||
+    "en";
+
+  const lang = language === "hi" ? "hi" : "en";
+  const t = TEXT[lang];
+
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [speakingScheme, setSpeakingScheme] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadResults() {
+      setLoading(true);
+      setError("");
+
+      try {
+        let savedResult = location.state?.eligibilityResult;
+
+        if (!savedResult) {
+          const stored = sessionStorage.getItem(
+            "janSahayakEligibilityResult"
+          );
+
+          savedResult = stored ? JSON.parse(stored) : null;
+        }
+
+        if (!savedResult || !Array.isArray(savedResult.results)) {
+          if (!cancelled) setResults([]);
+          return;
+        }
+
+        const detailedResults = await Promise.all(
+          savedResult.results.map(async (result) => {
+            try {
+              const response = await fetch(
+                `${API_URL}/api/schemes/${result.scheme_id}?language=${lang}`
+              );
+
+              if (!response.ok) {
+                return { ...result, documents: [], sources: [] };
+              }
+
+              const details = await response.json();
+
+              return {
+                ...result,
+                documents: details.documents || [],
+                sources: details.sources || [],
+              };
+            } catch {
+              return { ...result, documents: [], sources: [] };
+            }
+          })
+        );
+
+        if (!cancelled) {
+          setResults(detailedResults);
+        }
+      } catch {
+        if (!cancelled) setError(t.error);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
-  }, [location.state]);
 
-  const visibleSchemes = demoSchemes.filter(scheme => {
-    const matchesFilter = filter === "all" || scheme.status === filter;
-    const matchesSearch = scheme.name.toLowerCase().includes(search.toLowerCase());
-    const matchesSaved = !showSaved || saved.includes(scheme.id);
-    return matchesFilter && matchesSearch && matchesSaved;
-  });
+    loadResults();
 
-  const toggleSaved = id => {
-    setSaved(current => current.includes(id) ? current.filter(item => item !== id) : [...current, id]);
-  };
+    return () => {
+      cancelled = true;
+    };
+  }, [location.state, lang]);
 
-  const toggleDocument = (schemeId, name) => {
-    const key = `${schemeId}-${name}`;
-    setCheckedDocs(current => ({ ...current, [key]: !current[key] }));
-  };
+  useEffect(() => {
+    return () => {
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
-  const printPage = () => window.print();
+  function handleSpeak(scheme) {
+    if (speakingScheme === scheme.scheme_id) {
+      window.speechSynthesis.cancel();
+      setSpeakingScheme(null);
+      return;
+    }
+
+    speakResults(scheme, lang);
+
+    if ("speechSynthesis" in window) {
+      setSpeakingScheme(scheme.scheme_id);
+      window.speechSynthesis.onend = () => setSpeakingScheme(null);
+    }
+  }
+
+  function clearData() {
+    if (!window.confirm(t.clearConfirm)) return;
+
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+
+    sessionStorage.removeItem("janSahayakEligibilityResult");
+    sessionStorage.removeItem("janSahayakEligibility");
+
+    setResults([]);
+    setSpeakingScheme(null);
+
+    window.alert(t.cleared);
+    navigate("/", { replace: true, state: null });
+  }
 
   return (
-    <div className="mx-auto max-w-[1500px]">
-      <style>{`
-        @media print {
-          .no-print { display: none !important; }
-          body { background: white !important; }
-          .print-content { border: 0 !important; box-shadow: none !important; }
-        }
-      `}</style>
-
-      <div className="no-print mb-5 flex items-center gap-2 text-sm text-slate-500">
-        <Home size={17} /> Home <ChevronRight size={17} />
-        <span className="font-medium text-slate-900">{selectedScheme ? "Scheme Details" : "My Results"}</span>
+    <div className="mx-auto max-w-5xl">
+      <div className="mb-7">
+        <h1 className="text-3xl font-bold text-slate-950">
+          {t.title}
+        </h1>
+        <p className="mt-2 text-slate-600">
+          {t.subtitle}
+        </p>
       </div>
 
-      {selectedScheme ? (
-        <div className="print-content">
-          <div className="no-print mb-5">
-            <button onClick={() => setSelectedScheme(null)} className="flex items-center gap-2 text-sm font-medium text-emerald-800 hover:underline">
-              <ArrowLeft size={18} /> Back to Results
-            </button>
-          </div>
-
-          <h1 className="mb-6 text-3xl font-bold text-slate-950">Scheme Details</h1>
-
-          <section className="mb-5 flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 sm:flex-row sm:items-center">
-            <div className={`flex h-20 w-20 items-center justify-center rounded-lg ${selectedScheme.tone}`}>
-              <selectedScheme.icon size={36} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h2 className="text-2xl font-bold text-slate-950">{selectedScheme.name}</h2>
-              <p className="mt-1 text-sm text-slate-600">{selectedScheme.ministry}</p>
-              <p className="mt-3 flex items-center gap-2 text-sm text-slate-500">
-                <CalendarDays size={17} /> Rules last checked: {selectedScheme.checked}
-              </p>
-            </div>
-            <StatusBadge status={selectedScheme.status} />
-          </section>
-
-          <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[1.4fr_1fr]">
-            <div className="space-y-4">
-              <section className="rounded-xl border border-slate-200 bg-white p-5">
-                <h3 className="mb-3 text-lg font-bold text-slate-900">About the Scheme</h3>
-                <p className="text-sm leading-7 text-slate-700">{selectedScheme.description}</p>
-              </section>
-              <section className="rounded-xl border border-slate-200 bg-white p-5">
-                <h3 className="mb-3 text-lg font-bold text-slate-900">Key Benefits</h3>
-                <ul className="list-disc space-y-2 pl-5 text-sm text-slate-700">
-                  {selectedScheme.benefits.map(item => <li key={item}>{item}</li>)}
-                </ul>
-              </section>
-              <section className="rounded-xl border border-slate-200 bg-white p-5">
-                <h3 className="mb-3 text-lg font-bold text-slate-900">Eligibility Criteria</h3>
-                <ul className="list-disc space-y-2 pl-5 text-sm text-slate-700">
-                  {selectedScheme.criteria.map(item => <li key={item}>{item}</li>)}
-                </ul>
-              </section>
-            </div>
-
-            <div className="space-y-4">
-              <section className="rounded-xl border border-slate-200 bg-white p-5">
-                <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-slate-900">
-                  <ClipboardList size={20} className="text-emerald-800" /> Documents Required
-                </h3>
-                <div className="space-y-4">
-                  {selectedScheme.documents.map(name => {
-                    const key = `${selectedScheme.id}-${name}`;
-                    return (
-                      <label key={name} className="flex cursor-pointer items-center gap-3 text-sm text-slate-700">
-                        <input type="checkbox" checked={!!checkedDocs[key]} onChange={() => toggleDocument(selectedScheme.id, name)} className="h-4 w-4 accent-emerald-800" />
-                        <span>{name}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-                <p className="mt-4 text-xs text-slate-400">Tick the documents you have collected.</p>
-              </section>
-
-              <section className="rounded-xl border border-slate-200 bg-white p-5">
-                <h3 className="mb-5 text-lg font-bold text-slate-900">Application Process</h3>
-                <ol className="space-y-4">
-                  {selectedScheme.process.map((item, index) => (
-                    <li key={item} className="flex items-start gap-3 text-sm leading-6 text-slate-700">
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-50 font-semibold text-emerald-800">{index + 1}</span>
-                      {item}
-                    </li>
-                  ))}
-                </ol>
-              </section>
-            </div>
-          </div>
-
-          <div className="no-print mt-7 flex flex-wrap justify-end gap-3 border-t border-slate-200 pt-6">
-            <button onClick={printPage} className="flex items-center gap-2 rounded-lg border border-emerald-800 px-5 py-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-50">
-              <Printer size={18} /> Print
-            </button>
-            <button onClick={printPage} className="flex items-center gap-2 rounded-lg border border-emerald-800 px-5 py-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-50">
-              <Download size={18} /> Download PDF
-            </button>
-            {selectedScheme.website ? (
-              <a href={selectedScheme.website} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-lg bg-emerald-800 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-900">
-                Official Website <ExternalLink size={17} />
-              </a>
-            ) : (
-              <span className="rounded-lg border border-slate-200 px-4 py-3 text-xs text-slate-500">Official link not configured</span>
-            )}
-          </div>
-          <p className="mt-5 text-xs leading-5 text-slate-500">
-            This is demonstration content. Confirm scheme rules, required documents, dates and application steps on the relevant official website before applying.
-          </p>
+      {loading && (
+        <div className="flex items-center justify-center gap-3 rounded-xl border bg-white p-12 text-slate-600">
+          <LoaderCircle className="animate-spin" size={22} />
+          {t.loading}
         </div>
-      ) : (
+      )}
+
+      {!loading && error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-red-700">
+          {error}
+        </div>
+      )}
+
+      {!loading && !error && results.length === 0 && (
+        <div className="rounded-xl border bg-white p-8 text-center">
+          <AlertCircle className="mx-auto mb-3 text-amber-600" size={32} />
+          <p className="text-slate-700">{t.noResults}</p>
+          <Link
+            to="/eligibility"
+            className="mt-5 inline-flex items-center gap-2 rounded-lg bg-emerald-800 px-5 py-3 font-semibold text-white"
+          >
+            {t.back}
+          </Link>
+        </div>
+      )}
+
+      {!loading && !error && results.length > 0 && (
         <>
-          <div className="mb-7">
-            <h1 className="text-3xl font-bold text-slate-950">My Results</h1>
-            <p className="mt-2 text-base text-slate-500">Schemes that may match your information and eligibility.</p>
+          <div className="mb-6 flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
+            <ShieldCheck className="mt-1 shrink-0" size={20} />
+            {t.disclaimer}
           </div>
 
-          {!eligibilityData && (
-            <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-              No eligibility answers were found. You can still view the sample scheme list, or{" "}
-              <button onClick={() => navigate("/eligibility")} className="font-semibold underline">start an eligibility check</button>.
-            </div>
-          )}
+          <div className="space-y-6">
+            {results.map((scheme) => (
+              <article
+                key={scheme.scheme_id}
+                className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+              >
+                <div className="border-b border-slate-100 p-5 sm:p-6">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h2 className="text-xl font-bold text-slate-900">
+                      {scheme.scheme_name}
+                    </h2>
 
-          <div className="no-print mb-5 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap gap-2">
-              {filters.map(item => (
-                <button key={item.id} onClick={() => setFilter(item.id)}
-                  className={`rounded-lg border px-4 py-2.5 text-sm font-medium ${
-                    filter === item.id ? "border-emerald-800 bg-emerald-800 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-emerald-600"
-                  }`}>
-                  {item.label} ({item.id === "all" ? demoSchemes.length : demoSchemes.filter(s => s.status === item.id).length})
-                </button>
-              ))}
-            </div>
-            <button onClick={() => setShowSaved(value => !value)}
-              className={`flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm ${showSaved ? "border-emerald-800 bg-emerald-50 text-emerald-800" : "border-slate-200 text-slate-700"}`}>
-              <Bookmark size={17} /> Saved ({saved.length})
-            </button>
-          </div>
+                    <div className="flex items-center gap-2">
+                      <StatusIcon status={scheme.status} />
+                      <span className="font-semibold text-slate-800">
+                        {getStatusText(scheme.status, t)}
+                      </span>
+                    </div>
+                  </div>
 
-          <div className="no-print relative mb-5 max-w-md">
-            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search schemes..." className="w-full rounded-lg border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm outline-none focus:border-emerald-700" />
-          </div>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">
+                    {getStatusDescription(scheme.status, t)}
+                  </p>
 
-          <div className="space-y-3">
-            {visibleSchemes.map(scheme => (
-              <article key={scheme.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-                  <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-xl ${scheme.tone}`}>
-                    <scheme.icon size={32} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h2 className="font-bold text-slate-900">{scheme.name}</h2>
-                    <p className="mt-1 text-sm text-slate-500">{scheme.ministry}</p>
-                    <p className="mt-1 text-sm text-slate-600">{scheme.description}</p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <StatusBadge status={scheme.status} />
-                    <button onClick={() => setSelectedScheme(scheme)} className="rounded-lg border border-emerald-800 px-4 py-2.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-50">
-                      View Details
-                    </button>
-                    <button onClick={() => toggleSaved(scheme.id)} aria-label="Save scheme" className="rounded-lg p-2 text-slate-600 hover:bg-slate-100">
-                      <Bookmark size={20} fill={saved.includes(scheme.id) ? "currentColor" : "none"} />
-                    </button>
-                  </div>
+                  {scheme.explanation && (
+                    <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm leading-6 text-slate-700">
+                      {scheme.explanation}
+                    </p>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => handleSpeak(scheme)}
+                    className="mt-4 inline-flex items-center gap-2 rounded-lg border border-emerald-700 px-4 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-50"
+                  >
+                    {speakingScheme === scheme.scheme_id ? (
+                      <Square size={16} />
+                    ) : (
+                      <Volume2 size={17} />
+                    )}
+                    {speakingScheme === scheme.scheme_id ? t.stop : t.listen}
+                  </button>
                 </div>
+
+                {scheme.conditions?.length > 0 && (
+                  <section className="border-b border-slate-100 p-5 sm:p-6">
+                    <h3 className="mb-4 font-bold text-slate-900">
+                      {t.conditions}
+                    </h3>
+
+                    <div className="space-y-4">
+                      {scheme.conditions.map((condition, index) => (
+                        <div
+                          key={`${condition.id}-${index}`}
+                          className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
+                        >
+                          <div>
+                            <p className="font-medium text-slate-800">
+                              {condition.label}
+                            </p>
+                            {condition.explanation && (
+                              <p className="mt-1 text-sm text-slate-500">
+                                {condition.explanation}
+                              </p>
+                            )}
+                          </div>
+
+                          <ConditionStatus
+                            outcome={condition.outcome}
+                            t={t}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {scheme.missing_information?.length > 0 && (
+                  <section className="border-b border-slate-100 p-5 sm:p-6">
+                    <h3 className="mb-3 font-bold text-slate-900">
+                      {t.missing}
+                    </h3>
+
+                    <ul className="list-inside list-disc space-y-2 text-sm text-slate-600">
+                      {scheme.missing_information.map((item, index) => (
+                        <li key={index}>{item}</li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
+
+                <section className="border-b border-slate-100 p-5 sm:p-6">
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <h3 className="font-bold text-slate-900">
+                      {t.documents}
+                    </h3>
+
+                    <button
+                      type="button"
+                      onClick={() => printChecklist(scheme, t)}
+                      className="inline-flex items-center gap-2 rounded-lg border border-emerald-700 px-4 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-50"
+                    >
+                      <Printer size={16} />
+                      {t.print}
+                    </button>
+                  </div>
+
+                  {scheme.documents?.length ? (
+                    <div className="space-y-3">
+                      {scheme.documents.map((document) => (
+                        <div
+                          key={document.id}
+                          className="flex items-start gap-3 text-sm"
+                        >
+                          <FileText
+                            size={18}
+                            className="mt-0.5 shrink-0 text-emerald-700"
+                          />
+                          <div>
+                            <p className="font-medium text-slate-800">
+                              {document.name}
+                            </p>
+                            {document.description && (
+                              <p className="mt-1 text-slate-500">
+                                {document.description}
+                              </p>
+                            )}
+                            <span className="mt-1 inline-block text-xs text-slate-500">
+                              {document.is_mandatory
+                                ? t.mandatory
+                                : t.optional}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-500">
+                      {t.noDocuments}
+                    </p>
+                  )}
+                </section>
+
+                <section className="p-5 sm:p-6">
+                  <h3 className="mb-3 font-bold text-slate-900">
+                    {t.sources}
+                  </h3>
+
+                  {scheme.sources?.length ? (
+                    <div className="space-y-3">
+                      {scheme.sources.map((source, index) => (
+                        <div
+                          key={`${source.url}-${index}`}
+                          className="flex flex-wrap items-center justify-between gap-3"
+                        >
+                          <a
+                            href={source.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-2 text-sm font-medium text-emerald-800 underline"
+                          >
+                            {source.title}
+                            <ExternalLink size={14} />
+                          </a>
+
+                          <span className="text-xs text-slate-500">
+                            {t.lastChecked}:{" "}
+                            {source.last_checked_at
+                              ? new Date(source.last_checked_at).toLocaleDateString(
+                                  lang === "hi" ? "hi-IN" : "en-IN"
+                                )
+                              : t.notAvailable}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-500">
+                      {t.noSources}
+                    </p>
+                  )}
+
+                  {scheme.official_url && (
+                    <a
+                      href={scheme.official_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-emerald-800 underline"
+                    >
+                      {lang === "hi"
+                        ? "योजना की आधिकारिक वेबसाइट"
+                        : "Official scheme website"}
+                      <ExternalLink size={14} />
+                    </a>
+                  )}
+
+                  {scheme.last_verified_at && (
+                    <p className="mt-3 text-xs text-slate-500">
+                      {t.lastChecked}:{" "}
+                      {new Date(scheme.last_verified_at).toLocaleDateString(
+                        lang === "hi" ? "hi-IN" : "en-IN"
+                      )}
+                    </p>
+                  )}
+                </section>
               </article>
             ))}
-            {visibleSchemes.length === 0 && (
-              <div className="rounded-xl border border-slate-200 bg-white p-10 text-center text-slate-500">No schemes found.</div>
-            )}
           </div>
 
-          <div className="no-print mt-6 flex justify-between border-t border-slate-200 pt-5">
-            <button onClick={() => navigate("/eligibility")} className="rounded-lg border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-              <span className="inline-flex items-center gap-2"><ArrowLeft size={17} /> Edit Answers</span>
+          <div className="mt-7 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                window.speechSynthesis?.cancel();
+                sessionStorage.removeItem("janSahayakEligibilityResult");
+                sessionStorage.removeItem("janSahayakEligibility");
+                navigate("/eligibility");
+              }}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-6 py-3 font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              <ArrowLeft size={18} />
+              {t.back}
             </button>
-            <button onClick={() => navigate("/eligibility")} className="rounded-lg border border-emerald-800 px-5 py-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-50">
-              Start Again
+
+            <button
+              type="button"
+              onClick={clearData}
+              className="inline-flex items-center gap-2 rounded-lg border border-red-300 px-6 py-3 font-semibold text-red-700 hover:bg-red-50"
+            >
+              <Trash2 size={18} />
+              {t.clear}
             </button>
           </div>
         </>
