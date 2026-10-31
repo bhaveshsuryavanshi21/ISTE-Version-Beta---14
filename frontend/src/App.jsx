@@ -6,6 +6,7 @@ import DiscoverSchemes from "./pages/DiscoverSchemes";
 import Eligibility from "./pages/Eligibility";
 import Results from "./pages/Results";
 import Help from "./pages/Help";
+import Assistant from "./pages/Assistant";
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
         <Route path="/schemes" element={<DiscoverSchemes />} />
         <Route path="/eligibility" element={<Eligibility />} />
         <Route path="/results" element={<Results />} />
+        <Route path="/assistant" element={<Assistant />} />
         <Route path="/help" element={<Help />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

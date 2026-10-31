@@ -19,7 +19,6 @@ import {
   FileText,
   CheckCircle,
   LoaderCircle,
-  Printer,
 } from "lucide-react";
 
 const API_BASE_URL = (
@@ -125,12 +124,6 @@ const text = {
     mpGov: "Madhya Pradesh Government",
     hindiDataNote: "Some detailed scheme rules or document descriptions are currently available only in English.",
     unavailable: "Not available",
-    printChecklist: "Print / Download Checklist",
-    documentChecklist: "Document Checklist",
-    mandatory: "Required",
-    optional: "Optional",
-    printPopupBlocked: "Please allow pop-ups to print or save this checklist.",
-    checklistNote: "Please verify the latest document requirements on the official scheme website before applying.",
   },
   hi: {
     home: "होम",
@@ -179,12 +172,6 @@ const text = {
     mpGov: "मध्य प्रदेश सरकार",
     hindiDataNote: "योजना के कुछ विस्तृत नियम या दस्तावेज़ों का विवरण अभी केवल अंग्रेज़ी में उपलब्ध है।",
     unavailable: "उपलब्ध नहीं",
-    printChecklist: "सूची प्रिंट / डाउनलोड करें",
-    documentChecklist: "दस्तावेज़ों की सूची",
-    mandatory: "अनिवार्य",
-    optional: "वैकल्पिक",
-    printPopupBlocked: "इस सूची को प्रिंट या सेव करने के लिए कृपया पॉप-अप की अनुमति दें।",
-    checklistNote: "आवेदन करने से पहले आधिकारिक योजना वेबसाइट पर दस्तावेज़ों की नवीनतम आवश्यकताएँ जाँच लें।",
   },
 };
 
@@ -220,12 +207,16 @@ function formatDate(dateValue, language) {
   }).format(date);
 }
 
-function getSchemeField(scheme, englishKey, hindiKey, fallbackKey) {
+function getSchemeField(scheme, englishKey, hindiKey, fallbackKey, language = "en") {
   if (!scheme) return "";
-  if (hindiKey && scheme[hindiKey]) return scheme[hindiKey];
-  if (fallbackKey && schemeHindiFallback[scheme.id]?.[fallbackKey]) {
-    return schemeHindiFallback[scheme.id][fallbackKey];
+
+  if (language === "hi") {
+    if (hindiKey && scheme[hindiKey]) return scheme[hindiKey];
+    if (fallbackKey && schemeHindiFallback[scheme.id]?.[fallbackKey]) {
+      return schemeHindiFallback[scheme.id][fallbackKey];
+    }
   }
+
   return scheme[englishKey] || "";
 }
 
@@ -298,13 +289,14 @@ export default function DiscoverSchemes() {
     const query = search.trim().toLowerCase();
 
     const filtered = schemes.filter((scheme) => {
-      const displayName = getSchemeField(scheme, "name", "name_hi", "name");
-      const displayMinistry = getSchemeField(scheme, "ministry", "ministry_hi", "ministry");
+      const displayName = getSchemeField(scheme, "name", "name_hi", "name", language);
+      const displayMinistry = getSchemeField(scheme, "ministry", "ministry_hi", "ministry", language);
       const displayDescription = getSchemeField(
         scheme,
         "description",
         "description_hi",
-        "description"
+        "description",
+        language
       );
 
       const matchesSearch = [
@@ -324,8 +316,8 @@ export default function DiscoverSchemes() {
 
     if (sortBy === "az") {
       filtered.sort((a, b) => {
-        const nameA = getSchemeField(a, "name", "name_hi", "name");
-        const nameB = getSchemeField(b, "name", "name_hi", "name");
+        const nameA = getSchemeField(a, "name", "name_hi", "name", language);
+        const nameB = getSchemeField(b, "name", "name_hi", "name", language);
         return String(nameA).localeCompare(String(nameB), isHindi ? "hi" : "en");
       });
     }
@@ -404,122 +396,20 @@ export default function DiscoverSchemes() {
     setSortBy("recent");
   }
 
-  function escapeHtml(value) {
-    return String(value ?? "").replace(/[&<>"']/g, (character) => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;",
-    })[character]);
-  }
-
-  function printDocumentChecklist() {
-    const documents = schemeDetails?.documents || [];
-    if (!documents.length) return;
-
-    const schemeName = getSchemeField(schemeDetails, "name", "name_hi", "name");
-    const ministry = getSchemeField(schemeDetails, "ministry", "ministry_hi", "ministry");
-    const generatedDate = new Intl.DateTimeFormat(isHindi ? "hi-IN" : "en-IN", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    }).format(new Date());
-
-    const documentRows = documents.map((document) => {
-      const name = typeof document === "string"
-        ? document
-        : isHindi
-          ? document.name_hi || document.name
-          : document.name;
-      const description = typeof document === "string"
-        ? ""
-        : isHindi
-          ? document.description_hi || document.description
-          : document.description;
-      const requirement = typeof document === "string" || document.is_mandatory !== false
-        ? t.mandatory
-        : t.optional;
-
-      return `
-        <li class="document-item">
-          <span class="checkbox" aria-hidden="true"></span>
-          <div class="document-copy">
-            <strong>${escapeHtml(name)}</strong>
-            ${description ? `<p>${escapeHtml(description)}</p>` : ""}
-          </div>
-          <span class="requirement">${escapeHtml(requirement)}</span>
-        </li>
-      `;
-    }).join("");
-
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) {
-      window.alert(t.printPopupBlocked);
-      return;
-    }
-
-    printWindow.document.write(`
-      <!doctype html>
-      <html lang="${isHindi ? "hi" : "en"}">
-        <head>
-          <meta charset="UTF-8" />
-          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-          <title>${escapeHtml(t.documentChecklist)} - ${escapeHtml(schemeName)}</title>
-          <style>
-            * { box-sizing: border-box; }
-            body { margin: 0; padding: 36px; color: #172033; font-family: Arial, sans-serif; }
-            .page { max-width: 760px; margin: 0 auto; }
-            .brand { color: #047857; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
-            h1 { margin: 12px 0 6px; font-size: 26px; }
-            .scheme { margin: 0; color: #475569; font-size: 15px; }
-            .meta { margin-top: 20px; padding: 14px 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; line-height: 1.7; }
-            h2 { margin: 28px 0 12px; font-size: 17px; }
-            .documents { padding: 0; margin: 0; list-style: none; }
-            .document-item { display: flex; align-items: flex-start; gap: 12px; padding: 14px 10px; border-bottom: 1px solid #e2e8f0; break-inside: avoid; }
-            .checkbox { width: 17px; height: 17px; flex: 0 0 17px; border: 1.5px solid #475569; border-radius: 3px; margin-top: 2px; }
-            .document-copy { flex: 1; min-width: 0; }
-            .document-copy strong { font-size: 14px; }
-            .document-copy p { margin: 5px 0 0; color: #64748b; font-size: 12px; line-height: 1.5; }
-            .requirement { color: #475569; font-size: 11px; white-space: nowrap; }
-            .note { margin-top: 24px; padding: 12px 14px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 7px; color: #92400e; font-size: 12px; line-height: 1.6; }
-            .footer { margin-top: 28px; color: #94a3b8; font-size: 10px; text-align: center; }
-            @media print { body { padding: 0; } .page { max-width: none; } }
-          </style>
-        </head>
-        <body>
-          <main class="page">
-            <div class="brand">Jan Sahayak</div>
-            <h1>${escapeHtml(t.documentChecklist)}</h1>
-            <p class="scheme">${escapeHtml(schemeName)}</p>
-            <div class="meta">
-              ${ministry ? `<div><strong>${isHindi ? "मंत्रालय / विभाग" : "Ministry / Department"}:</strong> ${escapeHtml(ministry)}</div>` : ""}
-              <div><strong>${isHindi ? "तैयार करने की तारीख" : "Prepared on"}:</strong> ${escapeHtml(generatedDate)}</div>
-            </div>
-            <h2>${isHindi ? "दस्तावेज़ जाँचें" : "Documents to prepare"}</h2>
-            <ul class="documents">${documentRows}</ul>
-            <div class="note">${escapeHtml(t.checklistNote)}</div>
-            <div class="footer">${escapeHtml(schemeName)} · Jan Sahayak</div>
-          </main>
-          <script>window.onload = function () { window.focus(); window.print(); };</script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-  }
-
   const details = schemeDetails || selectedScheme;
   const detailDescription = getSchemeField(
     schemeDetails,
     "description",
     "description_hi",
-    "description"
+    "description",
+    language
   );
   const detailBenefits = getSchemeField(
     schemeDetails,
     "benefits",
     "benefits_hi",
-    "benefits"
+    "benefits",
+    language
   );
   const detailHasEnglishOnlyContent =
     isHindi &&
@@ -662,19 +552,21 @@ export default function DiscoverSchemes() {
           {filteredSchemes.map((scheme) => {
             const { Icon, iconColor, iconBg } = getCategoryVisual(scheme.category);
             const saved = bookmarks.includes(scheme.id);
-            const displayName = getSchemeField(scheme, "name", "name_hi", "name");
-            const displayMinistry = getSchemeField(scheme, "ministry", "ministry_hi", "ministry");
+            const displayName = getSchemeField(scheme, "name", "name_hi", "name", language);
+            const displayMinistry = getSchemeField(scheme, "ministry", "ministry_hi", "ministry", language);
             const displayDescription = getSchemeField(
               scheme,
               "description",
               "description_hi",
-              "description"
+              "description",
+              language
             );
             const displayBenefit = getSchemeField(
               scheme,
               "benefit_summary",
               "benefit_summary_hi",
-              "benefit_summary"
+              "benefit_summary",
+              language
             );
 
             return (
@@ -774,7 +666,7 @@ export default function DiscoverSchemes() {
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">{t.details}</p>
                 <h2 id="scheme-details-title" className="mt-1 text-xl font-bold text-slate-900">
-                  {getSchemeField(details, "name", "name_hi", "name")}
+                  {getSchemeField(details, "name", "name_hi", "name", language)}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
                   {getGovernmentLabel(details.government, language, t)} · {isHindi ? categoryHindi[details.category] || details.category : details.category}
@@ -831,16 +723,7 @@ export default function DiscoverSchemes() {
 
                 {schemeDetails.documents?.length > 0 && (
                   <section>
-                    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                      <h3 className="font-semibold text-slate-900">{t.documents}</h3>
-                      <button
-                        type="button"
-                        onClick={printDocumentChecklist}
-                        className="inline-flex items-center gap-2 rounded-lg border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50"
-                      >
-                        <Printer size={16} /> {t.printChecklist}
-                      </button>
-                    </div>
+                    <h3 className="mb-2 font-semibold text-slate-900">{t.documents}</h3>
                     <ul className="space-y-2">
                       {schemeDetails.documents.map((document, index) => (
                         <li key={document.id ?? index} className="flex items-start gap-2 text-sm text-slate-600">
