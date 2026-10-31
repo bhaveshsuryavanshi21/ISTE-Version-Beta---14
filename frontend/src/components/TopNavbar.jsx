@@ -1,7 +1,11 @@
 
 import { Mic, UserRound, Menu } from "lucide-react";
 
-export default function TopNavbar({ onMenuClick }) {
+export default function TopNavbar({
+  onMenuClick,
+  language,
+  onLanguageChange,
+}) {
   return (
     <header className="sticky top-0 z-30 flex h-[73px] items-center justify-end gap-4 border-b border-slate-200 bg-white px-6">
 
@@ -18,9 +22,14 @@ export default function TopNavbar({ onMenuClick }) {
         <span>Voice Assistant</span>
       </button>
 
-      <select className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 outline-none">
-        <option>English</option>
-        <option>हिन्दी</option>
+      <select
+        value={language}
+        onChange={(e) => onLanguageChange(e.target.value)}
+        aria-label="Select language"
+        className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 outline-none"
+      >
+        <option value="en">English</option>
+        <option value="hi">हिन्दी</option>
       </select>
 
       <button className="relative flex h-11 w-11 items-center justify-center rounded-full bg-slate-100">
