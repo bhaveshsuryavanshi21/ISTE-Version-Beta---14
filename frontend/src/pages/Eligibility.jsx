@@ -1,6 +1,10 @@
 
 import { useEffect, useState } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import {
+  useNavigate,
+  useOutletContext,
+  useSearchParams,
+} from "react-router-dom";
 import {
   Home,
   ChevronRight,
@@ -11,7 +15,6 @@ import {
   Mic,
   MicOff,
   ArrowLeft,
-  CheckCircle2,
 } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
@@ -185,8 +188,10 @@ function normalizeText(value) {
 
 export default function Eligibility() {
   const navigate = useNavigate();
-  const outletContext = useOutletContext() || {};
+  const [searchParams] = useSearchParams();
+  const schemeId = searchParams.get("scheme_id");
 
+  const outletContext = useOutletContext() || {};
   const language = outletContext.language === "hi" ? "hi" : "en";
   const t = TEXT[language];
 
@@ -201,6 +206,7 @@ export default function Eligibility() {
   const [voiceError, setVoiceError] = useState("");
   const [listeningQuestion, setListeningQuestion] = useState(null);
 
+  // Load all available schemes.
   useEffect(() => {
     let cancelled = false;
 
@@ -239,6 +245,20 @@ export default function Eligibility() {
     };
   }, [language]);
 
+  // Automatically select the scheme passed through the URL.
+  useEffect(() => {
+    if (loadingSchemes || !schemeId || schemes.length === 0) return;
+
+    const matchingScheme = schemes.find(
+      (scheme) => String(scheme.id) === String(schemeId)
+    );
+
+    if (matchingScheme) {
+      chooseScheme(matchingScheme);
+    }
+  }, [loadingSchemes, schemes, schemeId]);
+
+  // Load questions whenever a scheme is selected.
   useEffect(() => {
     if (!selectedScheme) return;
 
@@ -600,7 +620,6 @@ export default function Eligibility() {
               <div className="space-y-8">
                 {questions.map((question, index) => {
                   const options = getQuestionOptions(question);
-
                   const isListening = listeningQuestion === question.id;
 
                   return (
