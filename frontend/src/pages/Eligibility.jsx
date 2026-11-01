@@ -461,6 +461,24 @@ export default function Eligibility() {
 
       const result = await response.json();
 
+      // Store only a small assessment summary; never store the citizen's answers.
+      try {
+        const history = JSON.parse(localStorage.getItem("janSahayakActivity") || "[]");
+        const record = {
+          id: `eligibility-${Date.now()}`,
+          type: "eligibility_check",
+          title: selectedScheme.name || selectedScheme.name_hi || `Scheme ${selectedScheme.id}`,
+          titleHi: selectedScheme.name_hi || selectedScheme.name || `योजना ${selectedScheme.id}`,
+          schemeId: String(selectedScheme.id),
+          description: "Eligibility assessment completed",
+          savedAt: new Date().toISOString(),
+          status: Array.isArray(result.results)
+            ? result.results.find(item => String(item.scheme_id) === String(selectedScheme.id))?.status || result.results[0]?.status || "completed"
+            : "completed",
+        };
+        localStorage.setItem("janSahayakActivity", JSON.stringify([record, ...history].slice(0, 30)));
+      } catch { /* Activity history is optional; do not interrupt eligibility results. */ }
+
       sessionStorage.setItem(
         "janSahayakEligibilityResult",
         JSON.stringify(result)

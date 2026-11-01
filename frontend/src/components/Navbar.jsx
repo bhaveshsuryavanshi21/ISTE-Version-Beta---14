@@ -45,12 +45,15 @@ export default function Navbar({ language, onLanguageChange }) {
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200 bg-white">
       <div className="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center justify-between gap-4 px-5 py-3">
-        <NavLink
-          to="/"
-          className="text-2xl font-bold tracking-tight text-emerald-900"
-        >
-          JanSahayak
-        </NavLink>
+        
+<NavLink to="/" className="flex items-center">
+  <img
+    src="/jansahayak-logo.png"
+    alt="JanSahayak"
+    className="h-12 w-auto max-w-[240px] object-contain"
+  />
+</NavLink>
+
 
         <nav className="flex flex-wrap items-center gap-5">
           {links.map((link) => (

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useOutletContext } from "react-router-dom";
+import { Link, useNavigate, useOutletContext } from "react-router-dom";
 
 import {
   Search,
@@ -17,12 +17,11 @@ import {
   RefreshCw,
   ExternalLink,
   FileText,
-  CheckCircle,
-  LoaderCircle,
+  LoaderCircle, // ADD THIS
 } from "lucide-react";
 
 const API_BASE_URL = (
-  import.meta.env.VITE_API_URL || "http://127.0.0.1:8000"
+  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000"
 ).replace(/\/$/, "");
 
 const categories = [
@@ -229,6 +228,7 @@ function getGovernmentLabel(value, language, labels) {
 
 export default function DiscoverSchemes() {
   const { language = "en" } = useOutletContext();
+  const navigate = useNavigate();
   const isHindi = language === "hi";
   const t = text[isHindi ? "hi" : "en"];
 
@@ -243,10 +243,6 @@ export default function DiscoverSchemes() {
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
 
-  const [selectedScheme, setSelectedScheme] = useState(null);
-  const [schemeDetails, setSchemeDetails] = useState(null);
-  const [detailsLoading, setDetailsLoading] = useState(false);
-  const [detailsError, setDetailsError] = useState("");
 
   // Fetch the catalogue from the existing FastAPI endpoint.
   useEffect(() => {
@@ -340,86 +336,13 @@ export default function DiscoverSchemes() {
         : [...previous, id]
     );
   }
-
-  function openSchemeDetails(scheme) {
-    setSelectedScheme(scheme);
-    setSchemeDetails(null);
-    setDetailsError("");
-  }
-
-  // Fetch full scheme details without changing the backend API contract.
-  useEffect(() => {
-    if (!selectedScheme?.id) return undefined;
-    const controller = new AbortController();
-
-    async function fetchSchemeDetails() {
-      try {
-        setDetailsLoading(true);
-        setDetailsError("");
-
-        const response = await fetch(
-          `${API_BASE_URL}/api/schemes/${encodeURIComponent(selectedScheme.id)}`,
-          { signal: controller.signal }
-        );
-
-        if (!response.ok) {
-          throw new Error(
-            `Unable to load scheme details. Server returned ${response.status}.`
-          );
-        }
-
-        const data = await response.json();
-        setSchemeDetails(data);
-      } catch (err) {
-        if (err.name !== "AbortError") {
-          setDetailsError(err.message || "Unable to load scheme details.");
-        }
-      } finally {
-        if (!controller.signal.aborted) setDetailsLoading(false);
-      }
-    }
-
-    fetchSchemeDetails();
-    return () => controller.abort();
-  }, [selectedScheme?.id]);
-
-  function closeDetails() {
-    setSelectedScheme(null);
-    setSchemeDetails(null);
-    setDetailsError("");
-  }
-
   function clearFilters() {
-    setSearch("");
-    setGovernment("All");
-    setCategory("All");
-    setSortBy("recent");
-  }
+  setSearch("");
+  setGovernment("All");
+  setCategory("All");
+  setSortBy("recent");
+}
 
-  const details = schemeDetails || selectedScheme;
-  const detailDescription = getSchemeField(
-    schemeDetails,
-    "description",
-    "description_hi",
-    "description",
-    language
-  );
-  const detailBenefits = getSchemeField(
-    schemeDetails,
-    "benefits",
-    "benefits_hi",
-    "benefits",
-    language
-  );
-  const detailHasEnglishOnlyContent =
-    isHindi &&
-    schemeDetails &&
-    ((!schemeDetails.description_hi && schemeDetails.description) ||
-      (!schemeDetails.benefits_hi && schemeDetails.benefits) ||
-      schemeDetails.eligibility_conditions?.some(
-        (item) => !item.explanation_hi && !item.description_hi
-      ) ||
-      schemeDetails.documents?.some((item) => !item.name_hi));
 
   return (
     <div className="mx-auto max-w-[1500px]">
@@ -614,7 +537,7 @@ export default function DiscoverSchemes() {
                       <Bookmark size={19} fill={saved ? "currentColor" : "none"} />
                     </button>
                     <button
-                      onClick={() => openSchemeDetails(scheme)}
+                      onClick={() => navigate(`/schemes/${encodeURIComponent(scheme.id)}`)}
                       className="rounded-lg border border-blue-200 px-4 py-2.5 text-sm font-semibold text-blue-600 transition hover:bg-blue-50"
                     >
                       {t.view}
@@ -650,148 +573,6 @@ export default function DiscoverSchemes() {
         </div>
       )}
 
-      {selectedScheme && details && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/40 p-4"
-          onClick={closeDetails}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="scheme-details-title"
-            className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-5 flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">{t.details}</p>
-                <h2 id="scheme-details-title" className="mt-1 text-xl font-bold text-slate-900">
-                  {getSchemeField(details, "name", "name_hi", "name", language)}
-                </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  {getGovernmentLabel(details.government, language, t)} · {isHindi ? categoryHindi[details.category] || details.category : details.category}
-                </p>
-              </div>
-              <button onClick={closeDetails} aria-label={t.closePopup} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100">
-                <X size={20} />
-              </button>
-            </div>
-
-            {detailsLoading && (
-              <div className="flex items-center gap-2 py-8 text-sm text-slate-500">
-                <LoaderCircle size={18} className="animate-spin" /> {t.loadingDetails}
-              </div>
-            )}
-
-            {detailsError && (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                {detailsError}
-              </div>
-            )}
-
-            {!detailsLoading && !detailsError && schemeDetails && (
-              <div className="space-y-5">
-                {detailDescription && (
-                  <section>
-                    <h3 className="mb-2 font-semibold text-slate-900">{t.about}</h3>
-                    <p className="text-sm leading-6 text-slate-600">{detailDescription}</p>
-                  </section>
-                )}
-
-                {detailBenefits && (
-                  <section>
-                    <h3 className="mb-2 font-semibold text-slate-900">{t.benefits}</h3>
-                    <p className="text-sm leading-6 text-slate-600">{detailBenefits}</p>
-                  </section>
-                )}
-
-                {schemeDetails.eligibility_conditions?.length > 0 && (
-                  <section>
-                    <h3 className="mb-2 font-semibold text-slate-900">{t.conditions}</h3>
-                    <ul className="space-y-2">
-                      {schemeDetails.eligibility_conditions.map((condition, index) => (
-                        <li key={condition.rule_code ?? index} className="flex items-start gap-2 text-sm text-slate-600">
-                          <CheckCircle size={17} className="mt-0.5 shrink-0 text-emerald-600" />
-                          {isHindi
-                            ? condition.explanation_hi || condition.description_hi || condition.description || condition
-                            : condition.description || condition}
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                )}
-
-                {schemeDetails.documents?.length > 0 && (
-                  <section>
-                    <h3 className="mb-2 font-semibold text-slate-900">{t.documents}</h3>
-                    <ul className="space-y-2">
-                      {schemeDetails.documents.map((document, index) => (
-                        <li key={document.id ?? index} className="flex items-start gap-2 text-sm text-slate-600">
-                          <FileText size={17} className="mt-0.5 shrink-0 text-blue-600" />
-                          <span>
-                            {typeof document === "string"
-                              ? document
-                              : isHindi
-                                ? document.name_hi || document.name
-                                : document.name}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                )}
-
-                {isHindi && detailHasEnglishOnlyContent && (
-                  <p className="rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-800">
-                    {t.hindiDataNote}
-                  </p>
-                )}
-
-                <section className="rounded-lg bg-slate-50 p-4">
-                  <h3 className="mb-2 font-semibold text-slate-900">{t.officialInfo}</h3>
-                  <p className="mb-3 text-xs text-slate-500">
-                    {t.lastVerified} {formatDate(schemeDetails.last_verified_at, language)}
-                  </p>
-                  <div className="flex flex-wrap gap-4">
-                    {schemeDetails.official_url && (
-                      <a
-                        href={schemeDetails.official_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline"
-                      >
-                        {t.officialWebsite} <ExternalLink size={14} />
-                      </a>
-                    )}
-                    {schemeDetails.guidelines_url && (
-                      <a
-                        href={schemeDetails.guidelines_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline"
-                      >
-                        {t.guidelines} <ExternalLink size={14} />
-                      </a>
-                    )}
-                  </div>
-                </section>
-              </div>
-            )}
-
-            <div className="mt-6 flex flex-wrap justify-end gap-3 border-t border-slate-100 pt-5">
-              <button onClick={closeDetails} className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">
-                {t.close}
-              </button>
-              <Link
-                to={`/eligibility?scheme_id=${encodeURIComponent(selectedScheme.id)}`}
-                className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
-              >
-                {t.check} <ArrowRight size={16} />
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
