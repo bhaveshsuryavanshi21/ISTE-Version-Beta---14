@@ -52,6 +52,12 @@ const TEXT = {
     clear: "Clear My Data",
     clearConfirm: "Are you sure? This will clear your assessment data from this browser session.",
     cleared: "Your assessment data has been cleared.",
+    checklistNote: "This checklist is for preparation. Confirm the latest requirements on the official scheme portal before applying.",
+    nextSteps: "What to do next",
+    nextStepOne: "Review the conditions and any information that needs verification.",
+    nextStepTwo: "Keep the relevant documents ready and check whether they meet the scheme requirements.",
+    nextStepThree: "Use the official source below to confirm current instructions and application details.",
+    sourceFreshness: "Check the last-verified date before relying on scheme information.",
   },
   hi: {
     title: "आपकी पात्रता के परिणाम",
@@ -86,6 +92,12 @@ const TEXT = {
     clear: "मेरा डेटा मिटाएँ",
     clearConfirm: "क्या आप निश्चित हैं? इससे इस ब्राउज़र सत्र का जाँच डेटा मिट जाएगा।",
     cleared: "आपका जाँच डेटा मिटा दिया गया है।",
+    checklistNote: "यह सूची तैयारी के लिए है। आवेदन करने से पहले आधिकारिक योजना पोर्टल पर नवीनतम आवश्यकताओं की पुष्टि करें।",
+    nextSteps: "अब आगे क्या करें",
+    nextStepOne: "पात्रता की शर्तें और पुष्टि के लिए दी गई जानकारी दोबारा देखें।",
+    nextStepTwo: "ज़रूरी दस्तावेज़ तैयार रखें और जाँचें कि वे योजना की आवश्यकताओं के अनुसार हैं।",
+    nextStepThree: "वर्तमान निर्देशों और आवेदन की जानकारी की पुष्टि के लिए नीचे दिए गए आधिकारिक स्रोत देखें।",
+    sourceFreshness: "योजना की जानकारी पर भरोसा करने से पहले अंतिम सत्यापन की तारीख देखें।",
   },
 };
 
@@ -255,6 +267,7 @@ export default function Results() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [speakingScheme, setSpeakingScheme] = useState(null);
+  const [checkedDocuments, setCheckedDocuments] = useState({});
 
   useEffect(() => {
     let cancelled = false;
@@ -361,9 +374,14 @@ export default function Results() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <div className="mb-7">
-        <h1 className="text-3xl font-bold text-slate-950">
+    <div className="mx-auto max-w-5xl px-1 py-4 sm:px-2 sm:py-6">
+      <div className="mb-6">
+        <div className="mb-3 flex items-center gap-2 text-sm text-slate-500">
+          <Link to="/" className="font-medium text-emerald-800 hover:underline">{lang === "hi" ? "होम" : "Home"}</Link>
+          <span>/</span>
+          <span className="text-slate-700">{t.title}</span>
+        </div>
+        <h1 className="text-3xl font-bold tracking-tight text-slate-950">
           {t.title}
         </h1>
         <p className="mt-2 text-slate-600">
@@ -399,7 +417,7 @@ export default function Results() {
 
       {!loading && !error && results.length > 0 && (
         <>
-          <div className="mb-6 flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
+          <div className="mb-5 flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm leading-6 text-blue-950">
             <ShieldCheck className="mt-1 shrink-0" size={20} />
             {t.disclaimer}
           </div>
@@ -408,11 +426,11 @@ export default function Results() {
             {results.map((scheme) => (
               <article
                 key={scheme.scheme_id}
-                className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+                className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.05)]"
               >
-                <div className="border-b border-slate-100 p-5 sm:p-6">
+                <div className="border-b border-slate-200 p-5 sm:p-6">
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <h2 className="text-xl font-bold text-slate-900">
+                    <h2 className="text-xl font-bold tracking-tight text-slate-950">
                       {scheme.scheme_name}
                     </h2>
 
@@ -449,16 +467,16 @@ export default function Results() {
                 </div>
 
                 {scheme.conditions?.length > 0 && (
-                  <section className="border-b border-slate-100 p-5 sm:p-6">
+                  <section className="border-b border-slate-200 p-5 sm:p-6">
                     <h3 className="mb-4 font-bold text-slate-900">
                       {t.conditions}
                     </h3>
 
-                    <div className="space-y-4">
+                    <div className="overflow-hidden rounded-lg border border-slate-200">
                       {scheme.conditions.map((condition, index) => (
                         <div
                           key={`${condition.id}-${index}`}
-                          className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
+                          className="grid gap-2 border-b border-slate-200 px-4 py-3 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
                         >
                           <div>
                             <p className="font-medium text-slate-800">
@@ -482,7 +500,7 @@ export default function Results() {
                 )}
 
                 {scheme.missing_information?.length > 0 && (
-                  <section className="border-b border-slate-100 p-5 sm:p-6">
+                  <section className="border-b border-slate-200 p-5 sm:p-6">
                     <h3 className="mb-3 font-bold text-slate-900">
                       {t.missing}
                     </h3>
@@ -495,7 +513,7 @@ export default function Results() {
                   </section>
                 )}
 
-                <section className="border-b border-slate-100 p-5 sm:p-6">
+                <section className="border-b border-slate-200 p-5 sm:p-6">
                   <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                     <h3 className="font-bold text-slate-900">
                       {t.documents}
@@ -512,34 +530,47 @@ export default function Results() {
                   </div>
 
                   {scheme.documents?.length ? (
-                    <div className="space-y-3">
-                      {scheme.documents.map((document) => (
-                        <div
-                          key={document.id}
-                          className="flex items-start gap-3 text-sm"
-                        >
-                          <FileText
-                            size={18}
-                            className="mt-0.5 shrink-0 text-emerald-700"
-                          />
-                          <div>
-                            <p className="font-medium text-slate-800">
-                              {document.name}
-                            </p>
-                            {document.description && (
-                              <p className="mt-1 text-slate-500">
-                                {document.description}
-                              </p>
-                            )}
-                            <span className="mt-1 inline-block text-xs text-slate-500">
-                              {document.is_mandatory
-                                ? t.mandatory
-                                : t.optional}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    <>
+                      <p className="mb-4 rounded-md bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
+                        {t.checklistNote}
+                      </p>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {scheme.documents.map((document) => {
+                          const documentKey = `${scheme.scheme_id}-${document.id}`;
+                          return (
+                            <label
+                              key={documentKey}
+                              className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 text-sm transition ${
+                                checkedDocuments[documentKey]
+                                  ? "border-emerald-300 bg-emerald-50"
+                                  : "border-slate-200 hover:border-emerald-300"
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={Boolean(checkedDocuments[documentKey])}
+                                onChange={(event) =>
+                                  setCheckedDocuments((previous) => ({
+                                    ...previous,
+                                    [documentKey]: event.target.checked,
+                                  }))
+                                }
+                                className="mt-0.5 h-4 w-4 accent-emerald-800"
+                              />
+                              <span className="min-w-0">
+                                <span className="block font-medium text-slate-800">{document.name}</span>
+                                {document.description && (
+                                  <span className="mt-1 block text-xs leading-5 text-slate-500">{document.description}</span>
+                                )}
+                                <span className="mt-1 block text-xs text-slate-500">
+                                  {document.is_mandatory ? t.mandatory : t.optional}
+                                </span>
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </>
                   ) : (
                     <p className="text-sm text-slate-500">
                       {t.noDocuments}
@@ -547,10 +578,25 @@ export default function Results() {
                   )}
                 </section>
 
+                <section className="border-b border-slate-200 p-5 sm:p-6">
+                  <h3 className="mb-3 font-bold text-slate-900">
+                    {t.nextSteps}
+                  </h3>
+                  <ol className="space-y-2 text-sm leading-6 text-slate-700">
+                    {[t.nextStepOne, t.nextStepTwo, t.nextStepThree].map((step, index) => (
+                      <li key={index} className="flex items-start gap-3">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-xs font-semibold text-emerald-800">{index + 1}</span>
+                        <span>{step}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+
                 <section className="p-5 sm:p-6">
                   <h3 className="mb-3 font-bold text-slate-900">
                     {t.sources}
                   </h3>
+                  <p className="mb-4 text-xs text-slate-500">{t.sourceFreshness}</p>
 
                   {scheme.sources?.length ? (
                     <div className="space-y-3">
@@ -613,7 +659,7 @@ export default function Results() {
             ))}
           </div>
 
-          <div className="mt-7 flex flex-wrap gap-3">
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-5">
             <button
               type="button"
               onClick={() => {
